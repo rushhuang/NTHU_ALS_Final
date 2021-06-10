@@ -12,7 +12,8 @@
 .names a f h
 1- 1
 -1 1
-.names d e f g i 1111 1
+.names d e f g i
+1111 1
 .names i j
-01
+0 1
 .end

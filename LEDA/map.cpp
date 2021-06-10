@@ -1,3 +1,6 @@
+// LEDA Manual
+// http://www.algorithmic-solutions.info/leda_manual/MANUAL.html
+
 #include <iostream>
 #include <string>
 #include <sstream> // convert sting to int and vice versa
@@ -64,7 +67,7 @@ int main(int argc, char **argv){
 	size_t last = 0;
 	size_t next = 0;
 	while((next = primary_input_raw.find(delimiter, last)) != std::string::npos){
-		if(last != 0){
+		if(last != 0){ // Skip the first .inputs
 			PIs.push_back(primary_input_raw.substr(last, next-last));
 		}
 		last = next + 1;
@@ -75,7 +78,7 @@ int main(int argc, char **argv){
 	last = 0;
 	next = 0;
 	while((next = primary_output_raw.find(delimiter, last)) != std::string::npos){
-		if(last != 0){
+		if(last != 0){ // Skip the first .outputs
 			POs.push_back(primary_output_raw.substr(last, next-last));
 		}
 		last = next + 1;
@@ -93,6 +96,48 @@ int main(int argc, char **argv){
 	for(std::vector<std::string>::const_iterator it = POs.begin(); it != POs.end(); ++it){
 		cout << *it << '\n';
 	}
+
+	int count = 0;
+	std::string names_raw;
+	std::string relations_raw;
+	std::vector<std::vector<std::string> > tree_nodes;
+	std::vector<std::string> names;
+	getline(infile, names_raw);
+	while(names_raw.find(".end") == std::string::npos){ // Not .end
+
+		cout << names_raw << '\n';
+		// Parse names_raw for names of nodes with delimiter
+		last = 0;
+		next = 0;
+		while((next = names_raw.find(delimiter, last)) != std::string::npos){
+			if(last != 0){ // Skip the first .names
+				names.push_back(names_raw.substr(last, next-last));
+			}
+			last = next + 1;
+		}
+		names.push_back(names_raw.substr(last)); // For the element after the last delimiter
+
+		count = 0;
+		getline(infile, relations_raw);
+		while(relations_raw.find(".names") == std::string::npos &&\
+			  relations_raw.find(".end") == std::string::npos){ // Not .names and .end
+			cout << ++count << ": " << relations_raw << '\n';
+			getline(infile, relations_raw);
+		}
+		
+		tree_nodes.push_back(names);
+		names.clear();
+
+		names_raw = relations_raw;
+	}
+
+	cout << "Node names: \n";
+	for(std::vector<std::vector<std::string> >::const_iterator it = tree_nodes.begin(); it != tree_nodes.end(); ++it){
+		for(std::vector<std::string>::const_iterator itr = it->begin(); itr != it->end(); ++itr){
+			cout << *itr << '\n';
+		}
+	}
+
 	return 0;
 
 	// Graph construction
