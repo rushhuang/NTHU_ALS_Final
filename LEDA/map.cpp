@@ -85,19 +85,20 @@ int main(int argc, char **argv){
 	}
 	POs.push_back(primary_output_raw.substr(last)); // For the element after the last delimiter
 
-	cout << "Model name:\n" << model_name << '\n';
+	// cout << "Model name:\n" << model_name << '\n';
 
-	cout << "PIs: \n";
-	for(std::vector<std::string>::const_iterator it = PIs.begin(); it != PIs.end(); ++it){
-		cout << *it << '\n';
-	}
+	// cout << "PIs: \n";
+	// for(std::vector<std::string>::const_iterator it = PIs.begin(); it != PIs.end(); ++it){
+	// 	cout << *it << '\n';
+	// }
 
-	cout << "POs: \n";
-	for(std::vector<std::string>::const_iterator it = POs.begin(); it != POs.end(); ++it){
-		cout << *it << '\n';
-	}
+	// cout << "POs: \n";
+	// for(std::vector<std::string>::const_iterator it = POs.begin(); it != POs.end(); ++it){
+	// 	cout << *it << '\n';
+	// }
 
-	int count = 0;
+	int count = 0; // Relation counts for every .names
+	std::string node_type = "0"; // Record node type for each node
 	std::string names_raw;
 	std::string relations_raw;
 	std::vector<std::vector<std::string> > tree_nodes;
@@ -105,26 +106,42 @@ int main(int argc, char **argv){
 	getline(infile, names_raw);
 	while(names_raw.find(".end") == std::string::npos){ // Not .end
 
-		cout << names_raw << '\n';
+		// cout << names_raw << '\n';
+		
 		// Parse names_raw for names of nodes with delimiter
 		last = 0;
 		next = 0;
 		while((next = names_raw.find(delimiter, last)) != std::string::npos){
-			if(last != 0){ // Skip the first .names
-				names.push_back(names_raw.substr(last, next-last));
+			if(last != 0){ // Skip the first element '.names'
+				names.push_back(names_raw.substr(last, next-last)); // These are input nodes
 			}
 			last = next + 1;
 		}
-		names.push_back(names_raw.substr(last)); // For the element after the last delimiter
+		names.push_back(names_raw.substr(last)); // For the element after the last delimiter, which is the output node
 
 		count = 0;
+		node_type = "0"; // 1: AND, 2: OR, 3: INVERTER, 4: UNKNOWN
 		getline(infile, relations_raw);
 		while(relations_raw.find(".names") == std::string::npos &&\
 			  relations_raw.find(".end") == std::string::npos){ // Not .names and .end
-			cout << ++count << ": " << relations_raw << '\n';
+			// cout << ++count << ": " << relations_raw << '\n';
+			for(int i = 0; i < names.size()-1; ++i){ // Go through every input
+				if(relations_raw[i] == '-'){ // OR gate
+					node_type = "2";
+				}
+				else if(relations_raw[i] == '0'){ // INVERTER gate
+					node_type = "3";
+					if(names.size() > 2) node_type = "4"; // INVERTER with more than 1 input
+				}
+				else{ // AND gate
+					if(node_type != "0") continue; // Avoid changing determined node type
+					node_type = "1";
+					if(names.size() < 2) node_type = "4"; // AND with only 1 input
+				}
+			}
 			getline(infile, relations_raw);
 		}
-		
+		names.push_back(node_type);
 		tree_nodes.push_back(names);
 		names.clear();
 
@@ -134,8 +151,13 @@ int main(int argc, char **argv){
 	cout << "Node names: \n";
 	for(std::vector<std::vector<std::string> >::const_iterator it = tree_nodes.begin(); it != tree_nodes.end(); ++it){
 		for(std::vector<std::string>::const_iterator itr = it->begin(); itr != it->end(); ++itr){
-			cout << *itr << '\n';
+			if(*itr == "1") cout << "AND ";
+			else if(*itr == "2") cout << "OR ";
+			else if(*itr == "3") cout << "INV ";
+			else if(*itr == "4") cout << "UNKNOWN ";
+			else cout << *itr << ' ';
 		}
+		cout << '\n'; 
 	}
 
 	return 0;
@@ -169,5 +191,6 @@ int main(int argc, char **argv){
 		G.print_node(v);
 	cout << endl;
 
+	G.del_all_nodes();
 	return 0;
 }
