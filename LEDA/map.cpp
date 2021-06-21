@@ -9,6 +9,7 @@
 #include <map>
 #include <queue>
 #include <climits> // INT_MAX
+#include <algorithm> // std::remove
 using namespace std;
 
 #include <LEDA/core/list.h>
@@ -329,13 +330,103 @@ int main(int argc, char **argv){
 		// Update NODE level for level undecided NODE
 		if(NODES_map[NODE_front].NODE_level == 0){
 			BFS_count++;
+
+			// Breaking down the nodes with more than two inputs
+			while(NODES_map[NODE_front].InNODEs.size() > 2){
+				int smallest = INT_MAX;
+				int small_second = INT_MAX;
+				int smallest_idx = -1;
+				int small_second_idx = -1;
+				NODE tmp_node;
+				NODE smallest_NODE;
+				NODE small_second_NODE;
+
+				// For new NODE name
+				stringstream i2s;
+				i2s << NODES_map.size();
+				std::string new_name = i2s.str();
+
+				// Find the smallest two
+				for(int k = 0; k < NODES_map[NODE_front].InNODEs.size(); ++k){
+					if(NODES_map[NODES_map[NODE_front].InNODEs[k]].NODE_level < smallest){
+						if(smallest != small_second){
+							small_second = smallest;
+							small_second_idx = smallest_idx;
+						}
+						smallest = NODES_map[NODES_map[NODE_front].InNODEs[k]].NODE_level;
+						smallest_idx = k;
+					}
+					else{
+						if(NODES_map[NODES_map[NODE_front].InNODEs[k]].NODE_level != smallest || smallest != small_second){
+							if(NODES_map[NODES_map[NODE_front].InNODEs[k]].NODE_level < small_second){
+								small_second = NODES_map[NODES_map[NODE_front].InNODEs[k]].NODE_level;
+								small_second_idx = k;
+							}
+						}
+					}
+				}
+				
+				// Create a new NODE
+				new_name = "[" + new_name + "]";
+				tmp_node.NODE_name = new_name;
+				// Copy the original gate type to new NODE
+				tmp_node.NODE_type = NODES_map[NODE_front].NODE_type;
+				// Add the smallest two NODES into new NODE's input NODE list
+				tmp_node.InNODEs.push_back(NODES_map[NODE_front].InNODEs[smallest_idx]);
+				tmp_node.InNODEs.push_back(NODES_map[NODE_front].InNODEs[small_second_idx]);
+				// Add the gate NODE into new NODE's output NODE list
+				tmp_node.OutNODEs.push_back(NODE_front);
+
+				smallest_NODE = NODES_map[NODES_map[NODE_front].InNODEs[smallest_idx]];
+				small_second_NODE = NODES_map[NODES_map[NODE_front].InNODEs[small_second_idx]];
+
+				// Use the max level of the two input NODES +1 as the level of new NODE
+				tmp_node.NODE_level = ((smallest_NODE.NODE_level > small_second_NODE.NODE_level) ?
+										smallest_NODE.NODE_level : small_second_NODE.NODE_level) + 1;
+
+				// Delete gate NODE from the smallest two NODEs' output NODE list
+				// CANNOT use new NODE variable (smallest_NODE, small_second_NODE) to adjust original output NODE lists
+				NODES_map[NODES_map[NODE_front].InNODEs[smallest_idx]].OutNODEs.erase(
+					std::remove(NODES_map[NODES_map[NODE_front].InNODEs[smallest_idx]].OutNODEs.begin(),
+								NODES_map[NODES_map[NODE_front].InNODEs[smallest_idx]].OutNODEs.end(),
+								NODE_front),
+					NODES_map[NODES_map[NODE_front].InNODEs[smallest_idx]].OutNODEs.end());
+				NODES_map[NODES_map[NODE_front].InNODEs[small_second_idx]].OutNODEs.erase(
+					std::remove(NODES_map[NODES_map[NODE_front].InNODEs[small_second_idx]].OutNODEs.begin(),
+								NODES_map[NODES_map[NODE_front].InNODEs[small_second_idx]].OutNODEs.end(),
+								NODE_front),
+					NODES_map[NODES_map[NODE_front].InNODEs[small_second_idx]].OutNODEs.end());
+
+				// Add the new NODE to the smallest two NODEs' output NODE list
+				NODES_map[NODES_map[NODE_front].InNODEs[smallest_idx]].OutNODEs.push_back(new_name);
+				NODES_map[NODES_map[NODE_front].InNODEs[small_second_idx]].OutNODEs.push_back(new_name);
+
+				// Delete the smallest two NODEs from gate NODE's input NODE list
+				NODES_map[NODE_front].InNODEs.erase(NODES_map[NODE_front].InNODEs.begin() + smallest_idx);
+				if(smallest_idx < small_second_idx){ // To prevent from mis-indexing caused by deleting from previous line
+					NODES_map[NODE_front].InNODEs.erase(NODES_map[NODE_front].InNODEs.begin() + small_second_idx-1);
+				}
+				else{
+					NODES_map[NODE_front].InNODEs.erase(NODES_map[NODE_front].InNODEs.begin() + small_second_idx);
+				}
+
+				// Add the new NODE to gate NODE input NODE list
+				NODES_map[NODE_front].InNODEs.push_back(new_name);
+
+				// PUT new NODE into total NODE list
+				Total_NODES.push_back(tmp_node);
+		
+				// Put new NODE into NODE map
+				NODES_map[new_name] = tmp_node;
+			}
+
+			// Get the level for each node in BFS traversal without transform to two inputs graph
 			int max_level = 0;
 			for(int j = 0; j < NODES_map[NODE_front].InNODEs.size(); ++j){
 				if(NODES_map[NODES_map[NODE_front].InNODEs[j]].NODE_level > max_level){
 					max_level = NODES_map[NODES_map[NODE_front].InNODEs[j]].NODE_level;
 				}
 			}
-				
 			NODES_map[NODE_front].NODE_level = max_level+1;
 		}
 	}
