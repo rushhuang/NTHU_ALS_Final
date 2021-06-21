@@ -9,6 +9,7 @@
 #include <climits> // INT_MAX
 using namespace std;
 
+#include <LEDA/core/list.h>
 #include <LEDA/graph/graph.h>
 #include <LEDA/graph/min_cut.h>
 #include <LEDA/graph/min_cost_flow.h>
@@ -67,7 +68,7 @@ int main(int argc, char **argv){
 	size_t last = 0;
 	size_t next = 0;
 	while((next = primary_input_raw.find(delimiter, last)) != std::string::npos){
-		if(last != 0){ // Skip the first .inputs
+		if(last != 0){ // Skip the first '.inputs'
 			PIs.push_back(primary_input_raw.substr(last, next-last));
 		}
 		last = next + 1;
@@ -78,7 +79,7 @@ int main(int argc, char **argv){
 	last = 0;
 	next = 0;
 	while((next = primary_output_raw.find(delimiter, last)) != std::string::npos){
-		if(last != 0){ // Skip the first .outputs
+		if(last != 0){ // Skip the first '.outputs'
 			POs.push_back(primary_output_raw.substr(last, next-last));
 		}
 		last = next + 1;
@@ -97,6 +98,7 @@ int main(int argc, char **argv){
 	// 	cout << *it << '\n';
 	// }
 
+	graph G; // For circuit
 	int count = 0; // Relation counts for every .names
 	std::string node_type = "0"; // Record node type for each node
 	std::string names_raw;
@@ -107,7 +109,7 @@ int main(int argc, char **argv){
 	while(names_raw.find(".end") == std::string::npos){ // Not .end
 
 		// cout << names_raw << '\n';
-		
+
 		// Parse names_raw for names of nodes with delimiter
 		last = 0;
 		next = 0;
@@ -120,27 +122,37 @@ int main(int argc, char **argv){
 		names.push_back(names_raw.substr(last)); // For the element after the last delimiter, which is the output node
 
 		count = 0;
-		node_type = "0"; // 1: AND, 2: OR, 3: INVERTER, 4: UNKNOWN
+		node_type = "0"; // 1: AND, 2: OR, 3: INVERTER, 4: CONSTANT_0, 5: CONSTANT_1, 6: BUFFER, 7: UNKNOWN
 		getline(infile, relations_raw);
 		while(relations_raw.find(".names") == std::string::npos &&\
 			  relations_raw.find(".end") == std::string::npos){ // Not .names and .end
-			// cout << ++count << ": " << relations_raw << '\n';
+			count++; // Record how many relation lines are read to parse constant_0, which has no relation line.
+			// cout << count << ": " << relations_raw << '\n';
 			for(int i = 0; i < names.size()-1; ++i){ // Go through every input
 				if(relations_raw[i] == '-'){ // OR gate
 					node_type = "2";
 				}
 				else if(relations_raw[i] == '0'){ // INVERTER gate
 					node_type = "3";
-					if(names.size() > 2) node_type = "4"; // INVERTER with more than 1 input
+					if(names.size() > 2) node_type = "7"; // INVERTER with more than 1 input
 				}
 				else{ // AND gate
 					if(node_type != "0") continue; // Avoid changing determined node type
 					node_type = "1";
-					if(names.size() < 2) node_type = "4"; // AND with only 1 input
+					if(names.size() < 2) node_type = "5"; // CONSTANT_1 gate
+					if(names.size() == 2) node_type = "6"; // BUFFER gate
 				}
 			}
 			getline(infile, relations_raw);
 		}
+		// CONSTANT_0 gate
+		if(count == 0) node_type = "4";
+
+		// Insert node for circuit G
+		for(std::vector<std::string>::const_iterator itr = names.begin(); itr != names.end(); ++itr){
+			cout << *itr << ' ';
+		}
+		cout << '\n';
 		names.push_back(node_type);
 		tree_nodes.push_back(names);
 		names.clear();
@@ -154,42 +166,80 @@ int main(int argc, char **argv){
 			if(*itr == "1") cout << "AND ";
 			else if(*itr == "2") cout << "OR ";
 			else if(*itr == "3") cout << "INV ";
-			else if(*itr == "4") cout << "UNKNOWN ";
+			else if(*itr == "4") cout << "CONSTANT_0";
+			else if(*itr == "5") cout << "CONSTANT_1";
+			else if(*itr == "6") cout << "BUFFER";
+			else if(*itr == "7") cout << "UNKNOWN ";
 			else cout << *itr << ' ';
 		}
 		cout << '\n'; 
 	}
 
-	return 0;
+
 
 	// Graph construction
-	graph G;
-	node n0 = G.new_node();
-	node n1 = G.new_node();
-	node n2 = G.new_node();
-	node n3 = G.new_node();
-	edge e0 = G.new_edge(n0, n1);
-	edge e1 = G.new_edge(n1, n3);
-	edge e2 = G.new_edge(n0, n2);
-	edge e3 = G.new_edge(n2, n3);
+	// node n0 = G.new_node();
+	// node n1 = G.new_node();
+	// node n2 = G.new_node();
+	// node n3 = G.new_node();
+	// edge e0 = G.new_edge(n0, n1);
+	// edge e1 = G.new_edge(n1, n3);
+	// edge e2 = G.new_edge(n0, n2);
+	// edge e3 = G.new_edge(n2, n3);
+
+	node tmp_node;
+	std::vector<node> node_list;
+	for(int i = 0; i < 10; ++i){
+		tmp_node = G.new_node();
+		node_list.push_back(tmp_node);
+	}
+
+	edge tmp_edge;
+	for(int i = 0; i < 9; ++i){
+		tmp_edge = G.new_edge(node_list[i], node_list[node_list.size()-1]);
+	}
 
 	// Assign edge weights
 	edge_array<int> weight(G);
-	weight[e0] = 1;
-	weight[e1] = 3;
-	weight[e2] = 2;
-	weight[e3] = 2;
+	// weight[e0] = 1;
+	// weight[e1] = 3;
+	// weight[e2] = 2;
+	// weight[e3] = 2;
+
+
+	for(int i = 0; i < 10; ++i){
+		cout << "Node [" << i << "]:\n";
+		cout << "Address: " << node_list[i] << ", Value: ";
+		G.print_node(node_list[i]);
+		cout << ", Degree: " << G.indeg(node_list[i]);
+		cout << '\n';
+	}
+
+	forall_in_edges(tmp_edge, node_list[node_list.size()-1])
+		weight[tmp_edge] = 2;
+
+	int total_weight = 0;
+	forall_in_edges(tmp_edge, node_list[node_list.size()-1])
+		total_weight += weight[tmp_edge];
+	cout << total_weight << '\n';
+
+	const list<node> All_nodes = G.all_nodes();
+	node n;
+	forall(n, All_nodes)
+		G.print_node(n);
+	cout << endl;
+
 
 	// Min cut algorithm
-	list<node> cut;
-	int cut_value = MIN_CUT(G, weight, cut);
+	// list<node> cut;
+	// int cut_value = MIN_CUT(G, weight, cut);
 
-	cout << "The minimum cut has value: " << cut_value << endl;
-	cout << "cut:";
-	node v;
-	forall(v, cut)
-		G.print_node(v);
-	cout << endl;
+	// cout << "The minimum cut has value: " << cut_value << endl;
+	// cout << "cut:";
+	// node v;
+	// forall(v, cut)
+	// 	G.print_node(v);
+	// cout << endl;
 
 	G.del_all_nodes();
 	return 0;
