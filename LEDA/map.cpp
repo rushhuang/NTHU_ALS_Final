@@ -7,6 +7,7 @@
 #include <fstream>
 #include <vector>
 #include <map>
+#include <queue>
 #include <climits> // INT_MAX
 using namespace std;
 
@@ -32,12 +33,13 @@ using namespace leda;
 #endif
 
 struct NODE{
+	int NODE_level;
 
-	std::string node_name;
+	std::string NODE_name;
 
-	// node_type
+	// Define NODE type
 	// 0: PI, 1: AND, 2: OR, 3: INVERTER, 4: CONSTANT_0, 5: CONSTANT_1, 6: BUFFER, 7: UNKNOWN
-	std::string node_type;
+	std::string NODE_type;
 
 	// Input nodes
 	std::vector<std::string> InNODEs;
@@ -66,13 +68,32 @@ int main(int argc, char **argv){
 
 	// Handle model name, PI, PO
 	// Use std::string to avoid error for declaration of string datatype
+	std::string tmp_raw;
 	std::string model_name_raw;
 	std::string primary_input_raw;
 	std::string primary_output_raw;
 	char delimiter = ' ';
 	getline(infile, model_name_raw);
-	getline(infile, primary_input_raw);
-	getline(infile, primary_output_raw);
+	getline(infile, tmp_raw);
+	if(tmp_raw[tmp_raw.size()-1] == '\\'){ // Multiple line
+		while(tmp_raw[tmp_raw.size()-1] == '\\'){
+			primary_input_raw.append(tmp_raw.begin(), tmp_raw.end()-1);
+			getline(infile, tmp_raw);
+		}
+	}
+	primary_input_raw.append(tmp_raw);
+	getline(infile, tmp_raw);
+	
+	if(tmp_raw[tmp_raw.size()-1] == '\\'){
+		while(tmp_raw[tmp_raw.size()-1] == '\\'){ // Multiple line
+			primary_output_raw.append(tmp_raw.begin(), tmp_raw.end()-1);
+			getline(infile, tmp_raw);
+		}
+	}
+	primary_output_raw.append(tmp_raw);
+	
+	// getline(infile, primary_input_raw);
+	// getline(infile, primary_output_raw);
 	cout << "Model name: " << model_name_raw << ", PI: " << primary_input_raw << ", PO: " << primary_output_raw << "\n";
 
 	// +1 for skipping white space of the delimiter
@@ -115,8 +136,9 @@ int main(int argc, char **argv){
 
 		// NODE initialization
 		NODE tmp_node;
-		tmp_node.node_name = *it;
-		tmp_node.node_type = "0"; // PI
+		tmp_node.NODE_level = 1; // Level for PI is initialized as 1
+		tmp_node.NODE_name = *it;
+		tmp_node.NODE_type = "0"; // PI
 
 		// PUT new NODE into total NODE list
 		Total_NODES.push_back(tmp_node);
@@ -131,8 +153,9 @@ int main(int argc, char **argv){
 
 		// NODE initialization
 		NODE tmp_node;
-		tmp_node.node_name = *it;
-		tmp_node.node_type = "0"; // PO
+		tmp_node.NODE_level = 0; // Level for PO is initialized as 0 to tell if the NODE is traversed
+		tmp_node.NODE_name = *it;
+		tmp_node.NODE_type = "0"; // PO
 
 		// PUT new NODE into total NODE list
 		Total_NODES.push_back(tmp_node);
@@ -143,7 +166,7 @@ int main(int argc, char **argv){
 
 
 	// for(std::map<std::string, NODE>::iterator it = NODES_map.begin(); it != NODES_map.end(); ++it){
-	// 	cout << it->first << " -> (" << it->second.node_name << ", " << it->second.node_type << ")\n";
+	// 	cout << it->first << " -> (" << it->second.NODE_name << ", " << it->second.NODE_type << ")\n";
 	// }
 	// cout << "-----------------------------------------------\n";
 	
@@ -169,6 +192,7 @@ int main(int argc, char **argv){
 		}
 		names.push_back(names_raw.substr(last)); // For the element after the last delimiter, which is the output node
 
+		// Parse gate type
 		count = 0;
 		node_type = "0"; // 1: AND, 2: OR, 3: INVERTER, 4: CONSTANT_0, 5: CONSTANT_1, 6: BUFFER, 7: UNKNOWN
 		getline(infile, relations_raw);
@@ -203,6 +227,7 @@ int main(int argc, char **argv){
 		// }
 		// cout << '\n';
 
+		// NODE creation
 		int this_gate_idx = names.size()-1;
 		// Create input NODES if needed
 		for(int i = 0; i < this_gate_idx; ++i){
@@ -212,8 +237,9 @@ int main(int argc, char **argv){
 			}
 			else{ // names[i] not exists.
 				NODE tmp_node;
-				tmp_node.node_name = names[i];
-				tmp_node.node_type = "0"; // Initialize its node type to PI/PO
+				tmp_node.NODE_level = 0;  // Initialize NODE level to 0 to tell if the NODE is traversed
+				tmp_node.NODE_name = names[i];
+				tmp_node.NODE_type = "0"; // Initialize its node type to PI/PO
 				
 				// PUT new NODE into total NODE list
 				Total_NODES.push_back(tmp_node);
@@ -227,15 +253,16 @@ int main(int argc, char **argv){
 
 		// Create gate NODE if needed
 		if(NODES_map.count(names[this_gate_idx]) > 0){ // names[-1] already exists.
-			NODES_map[names[this_gate_idx]].node_type = node_type; // Update node type
+			NODES_map[names[this_gate_idx]].NODE_type = node_type; // Update node type
 			for(int i = 0; i < this_gate_idx; ++i){ // Update input NODE list
 				NODES_map[names[this_gate_idx]].InNODEs.push_back(names[i]);
 			}
 		}
 		else{
 			NODE tmp_node;
-			tmp_node.node_name = names[this_gate_idx];
-			tmp_node.node_type = node_type;
+			tmp_node.NODE_level = 0;  // Initialize NODE level to 0 to tell if the NODE is traversed
+			tmp_node.NODE_name = names[this_gate_idx];
+			tmp_node.NODE_type = node_type;
 				
 			// PUT new NODE into total NODE list
 			Total_NODES.push_back(tmp_node);
@@ -270,15 +297,49 @@ int main(int argc, char **argv){
 	// 	cout << '\n'; 
 	// }
 
+	// BFS Traversal to go through the graph in topological order
+	std::queue<std::string> NODE_queue;
+	for(std::vector<std::string>::const_iterator it = PIs.begin(); it != PIs.end(); ++it){
+		NODE_queue.push(*it);
+
+		while(!NODE_queue.empty()){
+			std::string NODE_front = NODE_queue.front();
+			NODE_queue.pop();
+
+			// Add output NODEs into the queue
+			for(int i = 0; i < NODES_map[NODE_front].OutNODEs.size(); ++i){
+				NODE_queue.push(NODES_map[NODE_front].OutNODEs[i]);
+			}
+
+			// Update NODE level for level undecided NODE
+			if(NODES_map[NODE_front].NODE_level == 0){
+				int max_level = 0;
+				for(int j = 0; j < NODES_map[NODE_front].InNODEs.size(); ++j){
+					if(NODES_map[NODES_map[NODE_front].InNODEs[j]].NODE_level > max_level){
+						max_level = NODES_map[NODES_map[NODE_front].InNODEs[j]].NODE_level;
+					}
+				}
+
+				if(max_level == 0){
+					cout << "MAX0: " << NODE_front << ", " << NODES_map[NODE_front].NODE_type << ", ";	
+				}
+				
+				NODES_map[NODE_front].NODE_level = max_level+1;
+			}
+		}
+	}
+
 	for(std::map<std::string, NODE>::iterator it = NODES_map.begin(); it != NODES_map.end(); ++it){
-		cout << it->first << " -> (" << it->second.node_name << ", ";
-		if(it->second.node_type == "1") cout << "AND";
-		else if(it->second.node_type == "2") cout << "OR";
-		else if(it->second.node_type == "3") cout << "INVERTER";
-		else if(it->second.node_type == "4") cout << "CONSTANT_0";
-		else if(it->second.node_type == "5") cout << "CONSTANT_1";
-		else if(it->second.node_type == "6") cout << "BUFFER";
-		else if(it->second.node_type == "7") cout << "UNKNOWN";
+		cout << it->first << " -> (" << it->second.NODE_name << ", ";
+		if(it->second.NODE_level == 0) cout << "Level: UNDECIDED, ";
+		else cout << "Level: " << it->second.NODE_level << ", ";
+		if(it->second.NODE_type == "1") cout << "AND";
+		else if(it->second.NODE_type == "2") cout << "OR";
+		else if(it->second.NODE_type == "3") cout << "INVERTER";
+		else if(it->second.NODE_type == "4") cout << "CONSTANT_0";
+		else if(it->second.NODE_type == "5") cout << "CONSTANT_1";
+		else if(it->second.NODE_type == "6") cout << "BUFFER";
+		else if(it->second.NODE_type == "7") cout << "UNKNOWN";
 		else cout << "PI/PO";
 		cout << ")\n";
 		cout << "Input NODEs (" << it->second.InNODEs.size() << "): \n";
@@ -294,7 +355,6 @@ int main(int argc, char **argv){
 		cout << '\n';
 		cout << "-----------------------------------------------\n";
 	}
-
 
 
 	// Graph construction
