@@ -6,6 +6,7 @@
 #include <sstream> // convert sting to int and vice versa
 #include <fstream>
 #include <vector>
+#include <map>
 #include <climits> // INT_MAX
 using namespace std;
 
@@ -29,6 +30,21 @@ using namespace leda;
 #else
 #   define ASSERT(condition, message) do { } while (false)
 #endif
+
+struct NODE{
+
+	std::string node_name;
+
+	// node_type
+	// 0: PI, 1: AND, 2: OR, 3: INVERTER, 4: CONSTANT_0, 5: CONSTANT_1, 6: BUFFER, 7: UNKNOWN
+	std::string node_type;
+
+	// Input nodes
+	std::vector<std::string> InNODEs;
+
+	// Output nodes
+	std::vector<std::string> OutNODEs;
+};
 
 int main(int argc, char **argv){
 	// cout << "Total: " << argc << " arguments fed!\n";
@@ -86,19 +102,51 @@ int main(int argc, char **argv){
 	}
 	POs.push_back(primary_output_raw.substr(last)); // For the element after the last delimiter
 
+	// List of total NODEs
+	std::vector<NODE> Total_NODES;
+	// Mapping between node names and struct node
+	std::map<std::string, NODE> NODES_map;
+
 	// cout << "Model name:\n" << model_name << '\n';
 
 	// cout << "PIs: \n";
-	// for(std::vector<std::string>::const_iterator it = PIs.begin(); it != PIs.end(); ++it){
-	// 	cout << *it << '\n';
-	// }
+	for(std::vector<std::string>::const_iterator it = PIs.begin(); it != PIs.end(); ++it){
+		// cout << *it << '\n';
+
+		// NODE initialization
+		NODE tmp_node;
+		tmp_node.node_name = *it;
+		tmp_node.node_type = "0"; // PI
+
+		// PUT new NODE into total NODE list
+		Total_NODES.push_back(tmp_node);
+		
+		// Put new NODE into mapp
+		NODES_map[*it] = tmp_node;
+	}
 
 	// cout << "POs: \n";
-	// for(std::vector<std::string>::const_iterator it = POs.begin(); it != POs.end(); ++it){
-	// 	cout << *it << '\n';
-	// }
+	for(std::vector<std::string>::const_iterator it = POs.begin(); it != POs.end(); ++it){
+		// cout << *it << '\n';
 
-	graph G; // For circuit
+		// NODE initialization
+		NODE tmp_node;
+		tmp_node.node_name = *it;
+		tmp_node.node_type = "0"; // PO
+
+		// PUT new NODE into total NODE list
+		Total_NODES.push_back(tmp_node);
+		
+		// Put new NODE into NODE map
+		NODES_map[*it] = tmp_node;
+	}
+
+
+	// for(std::map<std::string, NODE>::iterator it = NODES_map.begin(); it != NODES_map.end(); ++it){
+	// 	cout << it->first << " -> (" << it->second.node_name << ", " << it->second.node_type << ")\n";
+	// }
+	// cout << "-----------------------------------------------\n";
+	
 	int count = 0; // Relation counts for every .names
 	std::string node_type = "0"; // Record node type for each node
 	std::string names_raw;
@@ -150,10 +198,56 @@ int main(int argc, char **argv){
 		if(count == 0) node_type = "4";
 
 		// Insert node for circuit G
-		for(std::vector<std::string>::const_iterator itr = names.begin(); itr != names.end(); ++itr){
-			cout << *itr << ' ';
+		// for(std::vector<std::string>::const_iterator itr = names.begin(); itr != names.end(); ++itr){
+		// 	cout << *itr << ' ';
+		// }
+		// cout << '\n';
+
+		int this_gate_idx = names.size()-1;
+		// Create input NODES if needed
+		for(int i = 0; i < this_gate_idx; ++i){
+			if(NODES_map.count(names[i]) > 0){ // names[i] already exists.
+				// Put this gate into its input nodes' output NODE list
+				NODES_map[names[i]].OutNODEs.push_back(names[this_gate_idx]);
+			}
+			else{ // names[i] not exists.
+				NODE tmp_node;
+				tmp_node.node_name = names[i];
+				tmp_node.node_type = "0"; // Initialize its node type to PI/PO
+				
+				// PUT new NODE into total NODE list
+				Total_NODES.push_back(tmp_node);
+		
+				// Put new NODE into NODE map
+				NODES_map[names[i]] = tmp_node;
+
+				tmp_node.OutNODEs.push_back(names[this_gate_idx]);
+			}
 		}
-		cout << '\n';
+
+		// Create gate NODE if needed
+		if(NODES_map.count(names[this_gate_idx]) > 0){ // names[-1] already exists.
+			NODES_map[names[this_gate_idx]].node_type = node_type; // Update node type
+			for(int i = 0; i < this_gate_idx; ++i){ // Update input NODE list
+				NODES_map[names[this_gate_idx]].InNODEs.push_back(names[i]);
+			}
+		}
+		else{
+			NODE tmp_node;
+			tmp_node.node_name = names[this_gate_idx];
+			tmp_node.node_type = node_type;
+				
+			// PUT new NODE into total NODE list
+			Total_NODES.push_back(tmp_node);
+		
+			// Put new NODE into NODE map
+			NODES_map[names[this_gate_idx]] = tmp_node;
+
+			for(int i = 0; i < this_gate_idx; ++i){ // Update input NODE list
+				NODES_map[names[this_gate_idx]].InNODEs.push_back(names[i]);
+			}
+		}
+
 		names.push_back(node_type);
 		tree_nodes.push_back(names);
 		names.clear();
@@ -161,24 +255,50 @@ int main(int argc, char **argv){
 		names_raw = relations_raw;
 	}
 
-	cout << "Node names: \n";
-	for(std::vector<std::vector<std::string> >::const_iterator it = tree_nodes.begin(); it != tree_nodes.end(); ++it){
-		for(std::vector<std::string>::const_iterator itr = it->begin(); itr != it->end(); ++itr){
-			if(*itr == "1") cout << "AND ";
-			else if(*itr == "2") cout << "OR ";
-			else if(*itr == "3") cout << "INV ";
-			else if(*itr == "4") cout << "CONSTANT_0";
-			else if(*itr == "5") cout << "CONSTANT_1";
-			else if(*itr == "6") cout << "BUFFER";
-			else if(*itr == "7") cout << "UNKNOWN ";
-			else cout << *itr << ' ';
+	// cout << "Node names: \n";
+	// for(std::vector<std::vector<std::string> >::const_iterator it = tree_nodes.begin(); it != tree_nodes.end(); ++it){
+	// 	for(std::vector<std::string>::const_iterator itr = it->begin(); itr != it->end(); ++itr){
+	// 		if(*itr == "1") cout << "AND ";
+	// 		else if(*itr == "2") cout << "OR ";
+	// 		else if(*itr == "3") cout << "INV ";
+	// 		else if(*itr == "4") cout << "CONSTANT_0";
+	// 		else if(*itr == "5") cout << "CONSTANT_1";
+	// 		else if(*itr == "6") cout << "BUFFER";
+	// 		else if(*itr == "7") cout << "UNKNOWN ";
+	// 		else cout << *itr << ' ';
+	// 	}
+	// 	cout << '\n'; 
+	// }
+
+	for(std::map<std::string, NODE>::iterator it = NODES_map.begin(); it != NODES_map.end(); ++it){
+		cout << it->first << " -> (" << it->second.node_name << ", ";
+		if(it->second.node_type == "1") cout << "AND";
+		else if(it->second.node_type == "2") cout << "OR";
+		else if(it->second.node_type == "3") cout << "INVERTER";
+		else if(it->second.node_type == "4") cout << "CONSTANT_0";
+		else if(it->second.node_type == "5") cout << "CONSTANT_1";
+		else if(it->second.node_type == "6") cout << "BUFFER";
+		else if(it->second.node_type == "7") cout << "UNKNOWN";
+		else cout << "PI/PO";
+		cout << ")\n";
+		cout << "Input NODEs (" << it->second.InNODEs.size() << "): \n";
+		for(int i = 0; i < it->second.InNODEs.size(); ++i){
+			cout << it->second.InNODEs[i] << ' ';
 		}
-		cout << '\n'; 
+		cout << '\n';
+
+		cout << "Output NODEs (" << it->second.OutNODEs.size() << "): \n";
+		for(int i = 0; i < it->second.OutNODEs.size(); ++i){
+			cout << it->second.OutNODEs[i] << ' ';
+		}
+		cout << '\n';
+		cout << "-----------------------------------------------\n";
 	}
 
 
 
 	// Graph construction
+	// graph G;
 	// node n0 = G.new_node();
 	// node n1 = G.new_node();
 	// node n2 = G.new_node();
