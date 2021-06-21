@@ -128,6 +128,9 @@ int main(int argc, char **argv){
 	// Mapping between node names and struct node
 	std::map<std::string, NODE> NODES_map;
 
+	// Initial nodes to do BFS (PI + CONSTANT)
+	std::vector<std::string> BFS_seed;
+
 	// cout << "Model name:\n" << model_name << '\n';
 
 	// cout << "PIs: \n";
@@ -145,6 +148,9 @@ int main(int argc, char **argv){
 		
 		// Put new NODE into mapp
 		NODES_map[*it] = tmp_node;
+
+		// Put PI into BFS_seed
+		BFS_seed.push_back(*it);
 	}
 
 	// cout << "POs: \n";
@@ -262,6 +268,11 @@ int main(int argc, char **argv){
 			NODE tmp_node;
 			tmp_node.NODE_level = 0;  // Initialize NODE level to 0 to tell if the NODE is traversed
 			tmp_node.NODE_name = names[this_gate_idx];
+			if(node_type == "4" || node_type == "5"){
+				tmp_node.NODE_level = 1; // Initialize NODE level to 1 if it is CONSTANT gate
+				// Put CONSTANT into BFS_seed
+				BFS_seed.push_back(names[this_gate_idx]);
+			}
 			tmp_node.NODE_type = node_type;
 				
 			// PUT new NODE into total NODE list
@@ -298,36 +309,39 @@ int main(int argc, char **argv){
 	// }
 
 	// BFS Traversal to go through the graph in topological order
+	int BFS_count = 0; // To check how many unique nodes that are traversed
 	std::queue<std::string> NODE_queue;
-	for(std::vector<std::string>::const_iterator it = PIs.begin(); it != PIs.end(); ++it){
+	// Starting BFS from BFS_seed list
+	for(std::vector<std::string>::const_iterator it = BFS_seed.begin(); it != BFS_seed.end(); ++it){
 		NODE_queue.push(*it);
+		BFS_count++;
+	}
 
-		while(!NODE_queue.empty()){
-			std::string NODE_front = NODE_queue.front();
-			NODE_queue.pop();
+	while(!NODE_queue.empty()){
+		std::string NODE_front = NODE_queue.front();
+		NODE_queue.pop();
 
-			// Add output NODEs into the queue
-			for(int i = 0; i < NODES_map[NODE_front].OutNODEs.size(); ++i){
-				NODE_queue.push(NODES_map[NODE_front].OutNODEs[i]);
+		// Add output NODEs into the queue
+		for(int i = 0; i < NODES_map[NODE_front].OutNODEs.size(); ++i){
+			NODE_queue.push(NODES_map[NODE_front].OutNODEs[i]);
+		}
+
+		// Update NODE level for level undecided NODE
+		if(NODES_map[NODE_front].NODE_level == 0){
+			BFS_count++;
+			int max_level = 0;
+			for(int j = 0; j < NODES_map[NODE_front].InNODEs.size(); ++j){
+				if(NODES_map[NODES_map[NODE_front].InNODEs[j]].NODE_level > max_level){
+					max_level = NODES_map[NODES_map[NODE_front].InNODEs[j]].NODE_level;
+				}
 			}
-
-			// Update NODE level for level undecided NODE
-			if(NODES_map[NODE_front].NODE_level == 0){
-				int max_level = 0;
-				for(int j = 0; j < NODES_map[NODE_front].InNODEs.size(); ++j){
-					if(NODES_map[NODES_map[NODE_front].InNODEs[j]].NODE_level > max_level){
-						max_level = NODES_map[NODES_map[NODE_front].InNODEs[j]].NODE_level;
-					}
-				}
-
-				if(max_level == 0){
-					cout << "MAX0: " << NODE_front << ", " << NODES_map[NODE_front].NODE_type << ", ";	
-				}
 				
-				NODES_map[NODE_front].NODE_level = max_level+1;
-			}
+			NODES_map[NODE_front].NODE_level = max_level+1;
 		}
 	}
+
+	// To check how many unique nodes that are traversed
+	// cout << "BFS count: " << BFS_count << ", Total nodes count: " << NODES_map.size() << '\n';
 
 	for(std::map<std::string, NODE>::iterator it = NODES_map.begin(); it != NODES_map.end(); ++it){
 		cout << it->first << " -> (" << it->second.NODE_name << ", ";
