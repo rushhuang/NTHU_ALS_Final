@@ -139,10 +139,11 @@ int main(int argc, char **argv){
 				else{ // AND gate
 					if(node_type != "0") continue; // Avoid changing determined node type
 					node_type = "1";
-					if(names.size() < 2) node_type = "5"; // CONSTANT_1 gate
 					if(names.size() == 2) node_type = "6"; // BUFFER gate
 				}
 			}
+			if(names.size() < 2) node_type = "5"; // CONSTANT_1 gate
+
 			getline(infile, relations_raw);
 		}
 		// CONSTANT_0 gate
@@ -186,48 +187,59 @@ int main(int argc, char **argv){
 	// edge e1 = G.new_edge(n1, n3);
 	// edge e2 = G.new_edge(n0, n2);
 	// edge e3 = G.new_edge(n2, n3);
+	// edge e4 = G.new_edge(n0, n3);
 
-	node tmp_node;
-	std::vector<node> node_list;
-	for(int i = 0; i < 10; ++i){
-		tmp_node = G.new_node();
-		node_list.push_back(tmp_node);
-	}
+	// node tmp_node;
+	// std::vector<node> node_list;
+	// for(int i = 0; i < 10; ++i){
+	// 	tmp_node = G.new_node();
+	// 	node_list.push_back(tmp_node);
+	// }
 
-	edge tmp_edge;
-	for(int i = 0; i < 9; ++i){
-		tmp_edge = G.new_edge(node_list[i], node_list[node_list.size()-1]);
-	}
+	// edge tmp_edge;
+	// for(int i = 0; i < 9; ++i){
+	// 	tmp_edge = G.new_edge(node_list[i], node_list[node_list.size()-1]);
+	// }
 
 	// Assign edge weights
-	edge_array<int> weight(G);
+	// edge_array<int> weight(G);
 	// weight[e0] = 1;
 	// weight[e1] = 3;
 	// weight[e2] = 2;
 	// weight[e3] = 2;
+	// weight[e4] = 5;
 
 
-	for(int i = 0; i < 10; ++i){
-		cout << "Node [" << i << "]:\n";
-		cout << "Address: " << node_list[i] << ", Value: ";
-		G.print_node(node_list[i]);
-		cout << ", Degree: " << G.indeg(node_list[i]);
-		cout << '\n';
-	}
+	// for(int i = 0; i < 10; ++i){
+	// 	cout << "Node [" << i << "]:\n";
+	// 	cout << "Address: " << node_list[i] << ", Value: ";
+	// 	G.print_node(node_list[i]);
+	// 	cout << ", Degree: " << G.indeg(node_list[i]);
+	// 	cout << '\n';
+	// }
 
-	forall_in_edges(tmp_edge, node_list[node_list.size()-1])
-		weight[tmp_edge] = 2;
+	// cout << "Degree [n0]: " << G.indeg(n0);
+	// cout << '\n';
+	// cout << "Degree [n1]: " << G.indeg(n1);
+	// cout << '\n';
+	// cout << "Degree [n2]: " << G.indeg(n2);
+	// cout << '\n';
+	// cout << "Degree [n3]: " << G.indeg(n3);
+	// cout << '\n';
 
-	int total_weight = 0;
-	forall_in_edges(tmp_edge, node_list[node_list.size()-1])
-		total_weight += weight[tmp_edge];
-	cout << total_weight << '\n';
+	// forall_in_edges(tmp_edge, node_list[node_list.size()-1])
+	// 	weight[tmp_edge] = 2;
 
-	const list<node> All_nodes = G.all_nodes();
-	node n;
-	forall(n, All_nodes)
-		G.print_node(n);
-	cout << endl;
+	// int total_weight = 0;
+	// forall_in_edges(tmp_edge, node_list[node_list.size()-1])
+	// 	total_weight += weight[tmp_edge];
+	// cout << total_weight << '\n';
+
+	// const list<node> All_nodes = G.all_nodes();
+	// node n;
+	// forall(n, All_nodes)
+	// 	G.print_node(n);
+	// cout << endl;
 
 
 	// Min cut algorithm
@@ -241,6 +253,6 @@ int main(int argc, char **argv){
 	// 	G.print_node(v);
 	// cout << endl;
 
-	G.del_all_nodes();
+	// G.del_all_nodes();
 	return 0;
 }
