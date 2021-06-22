@@ -140,7 +140,7 @@ int main(int argc, char **argv){
 
 		// NODE initialization
 		NODE tmp_node;
-		tmp_node.NODE_level = 1; // Level for PI is initialized as 1
+		tmp_node.NODE_level = 0; // Level for PI is initialized as 0
 		tmp_node.NODE_name = *it;
 		tmp_node.NODE_type = "0"; // PI
 
@@ -160,7 +160,7 @@ int main(int argc, char **argv){
 
 		// NODE initialization
 		NODE tmp_node;
-		tmp_node.NODE_level = 0; // Level for PO is initialized as 0 to tell if the NODE is traversed
+		tmp_node.NODE_level = -1; // Level for PO -1s initialized as -1 to tell if the NODE is traversed
 		tmp_node.NODE_name = *it;
 		tmp_node.NODE_type = "0"; // PO
 
@@ -244,7 +244,7 @@ int main(int argc, char **argv){
 			}
 			else{ // names[i] not exists.
 				NODE tmp_node;
-				tmp_node.NODE_level = 0;  // Initialize NODE level to 0 to tell if the NODE is traversed
+				tmp_node.NODE_level = -1;  // Initialize NODE level to -1 to tell if the NODE is traversed
 				tmp_node.NODE_name = names[i];
 				tmp_node.NODE_type = "0"; // Initialize its node type to PI/PO
 				
@@ -268,10 +268,10 @@ int main(int argc, char **argv){
 		}
 		else{
 			NODE tmp_node;
-			tmp_node.NODE_level = 0;  // Initialize NODE level to 0 to tell if the NODE is traversed
+			tmp_node.NODE_level = -1;  // Initialize NODE level to -1 to tell if the NODE is traversed
 			tmp_node.NODE_name = names[this_gate_idx];
 			if(node_type == "4" || node_type == "5"){
-				tmp_node.NODE_level = 1; // Initialize NODE level to 1 if it is CONSTANT gate
+				tmp_node.NODE_level = 0; // Initialize NODE level to 0 if it is CONSTANT gate
 				// Put CONSTANT into BFS_seed
 				BFS_seed.push_back(names[this_gate_idx]);
 			}
@@ -314,7 +314,7 @@ int main(int argc, char **argv){
 
 	// for(std::map<std::string, NODE>::iterator it = NODES_map.begin(); it != NODES_map.end(); ++it){
 	// 	cout << "Index: " << it->first << " -> NODE: (" << it->second.NODE_name << ", ";
-	// 	if(it->second.NODE_level == 0) cout << "Level: UNDECIDED, ";
+	// 	if(it->second.NODE_level == -1) cout << "Level: UNDECIDED, ";
 	// 	else cout << "Level: " << it->second.NODE_level << ", ";
 	// 	if(it->second.NODE_type == "1") cout << "AND";
 	// 	else if(it->second.NODE_type == "2") cout << "OR";
@@ -357,11 +357,24 @@ int main(int argc, char **argv){
 
 		// Add output NODEs into the queue
 		for(int i = 0; i < NODES_map[NODE_front].OutNODEs.size(); ++i){
-			NODE_queue.push(NODES_map[NODE_front].OutNODEs[i]);
+			bool add_output_list = true;
+			for(int j = 0; j < NODES_map[NODES_map[NODE_front].OutNODEs[i]].InNODEs.size(); ++j){
+				// Check if output NODE's input NODEs have complete level info: for topological order with BFS
+				if(NODES_map[NODES_map[NODES_map[NODE_front].OutNODEs[i]].InNODEs[j]].NODE_level == -1){
+					add_output_list = false;
+					break;
+				}
+			}
+			if(add_output_list){ // Add the output NODE only if its input NODEs have complete level info.
+				NODE_queue.push(NODES_map[NODE_front].OutNODEs[i]);
+			}
+			else{ // Add the front NODE back to the queue for later ouput NODEs traversal
+				NODE_queue.push(NODE_front);
+			}
 		}
 
 		// Update NODE level for level undecided NODE
-		if(NODES_map[NODE_front].NODE_level == 0){
+		if(NODES_map[NODE_front].NODE_level == -1){
 			BFS_count++;
 
 			// Breaking down the nodes with more than two inputs
@@ -454,11 +467,11 @@ int main(int argc, char **argv){
 			}
 
 			// Get the level for each node in BFS traversal without transform to two inputs graph
-			int max_level = 0;
+			int max_level = -1;
 			for(int j = 0; j < NODES_map[NODE_front].InNODEs.size(); ++j){
-				if(NODES_map[NODES_map[NODE_front].InNODEs[j]].NODE_level == 0){ // Input NODE's level info is not complete
+				if(NODES_map[NODES_map[NODE_front].InNODEs[j]].NODE_level == -1){ // Input NODE's level info is not complete
 					NODE_queue.push(NODE_front); // Re-add front NODE to BFS queue
-					max_level = -1; // To make the front NODE's level be zero after this round
+					max_level = -2; // To make the front NODE's level be -1 after this round
 					break;
 				}
 				if(NODES_map[NODES_map[NODE_front].InNODEs[j]].NODE_level > max_level){
@@ -474,7 +487,7 @@ int main(int argc, char **argv){
 
 	for(std::map<std::string, NODE>::iterator it = NODES_map.begin(); it != NODES_map.end(); ++it){
 		cout << "Index: " << it->first << " -> NODE: (" << it->second.NODE_name << ", ";
-		if(it->second.NODE_level == 0) cout << "Level: UNDECIDED, ";
+		if(it->second.NODE_level == -1) cout << "Level: UNDECIDED, ";
 		else cout << "Level: " << it->second.NODE_level << ", ";
 		if(it->second.NODE_type == "1") cout << "AND";
 		else if(it->second.NODE_type == "2") cout << "OR";
