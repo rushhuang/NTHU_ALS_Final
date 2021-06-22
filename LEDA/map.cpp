@@ -254,7 +254,8 @@ int main(int argc, char **argv){
 				// Put new NODE into NODE map
 				NODES_map[names[i]] = tmp_node;
 
-				tmp_node.OutNODEs.push_back(names[this_gate_idx]);
+				// Add gate NODE to its input NODEs' output NODE list
+				NODES_map[names[i]].OutNODEs.push_back(names[this_gate_idx]);
 			}
 		}
 
@@ -294,6 +295,8 @@ int main(int argc, char **argv){
 		names_raw = relations_raw;
 	}
 
+	// cout << "-----------------------Checking------------------------\n";
+	// cout << "Total: " << Total_NODES.size() << " NODEs.\n";
 	// cout << "Node names: \n";
 	// for(std::vector<std::vector<std::string> >::const_iterator it = tree_nodes.begin(); it != tree_nodes.end(); ++it){
 	// 	for(std::vector<std::string>::const_iterator itr = it->begin(); itr != it->end(); ++itr){
@@ -306,8 +309,38 @@ int main(int argc, char **argv){
 	// 		else if(*itr == "7") cout << "UNKNOWN ";
 	// 		else cout << *itr << ' ';
 	// 	}
-	// 	cout << '\n'; 
+	// 	cout << '\n';
 	// }
+
+	// for(std::map<std::string, NODE>::iterator it = NODES_map.begin(); it != NODES_map.end(); ++it){
+	// 	cout << "Index: " << it->first << " -> NODE: (" << it->second.NODE_name << ", ";
+	// 	if(it->second.NODE_level == 0) cout << "Level: UNDECIDED, ";
+	// 	else cout << "Level: " << it->second.NODE_level << ", ";
+	// 	if(it->second.NODE_type == "1") cout << "AND";
+	// 	else if(it->second.NODE_type == "2") cout << "OR";
+	// 	else if(it->second.NODE_type == "3") cout << "INVERTER";
+	// 	else if(it->second.NODE_type == "4") cout << "CONSTANT_0";
+	// 	else if(it->second.NODE_type == "5") cout << "CONSTANT_1";
+	// 	else if(it->second.NODE_type == "6") cout << "BUFFER";
+	// 	else if(it->second.NODE_type == "7") cout << "UNKNOWN";
+	// 	else cout << "PI/PO";
+	// 	cout << ")\n";
+	// 	cout << "Input NODEs (" << it->second.InNODEs.size() << "): \n";
+	// 	for(int i = 0; i < it->second.InNODEs.size(); ++i){
+	// 		cout << it->second.InNODEs[i] << ' ';
+	// 	}
+	// 	cout << '\n';
+
+	// 	cout << "Output NODEs (" << it->second.OutNODEs.size() << "): \n";
+	// 	for(int i = 0; i < it->second.OutNODEs.size(); ++i){
+	// 		cout << it->second.OutNODEs[i] << ' ';
+	// 	}
+	// 	cout << '\n';
+	// 	cout << "-----------------------------------------------\n";
+	// }
+
+
+	// cout << "-----------------------Checking------------------------\n";
 
 	// BFS Traversal to go through the graph in topological order
 	int BFS_count = 0; // To check how many unique nodes that are traversed
@@ -435,7 +468,7 @@ int main(int argc, char **argv){
 	// cout << "BFS count: " << BFS_count << ", Total nodes count: " << NODES_map.size() << '\n';
 
 	for(std::map<std::string, NODE>::iterator it = NODES_map.begin(); it != NODES_map.end(); ++it){
-		cout << it->first << " -> (" << it->second.NODE_name << ", ";
+		cout << "Index: " << it->first << " -> NODE: (" << it->second.NODE_name << ", ";
 		if(it->second.NODE_level == 0) cout << "Level: UNDECIDED, ";
 		else cout << "Level: " << it->second.NODE_level << ", ";
 		if(it->second.NODE_type == "1") cout << "AND";
