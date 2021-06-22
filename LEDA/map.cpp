@@ -456,6 +456,11 @@ int main(int argc, char **argv){
 			// Get the level for each node in BFS traversal without transform to two inputs graph
 			int max_level = 0;
 			for(int j = 0; j < NODES_map[NODE_front].InNODEs.size(); ++j){
+				if(NODES_map[NODES_map[NODE_front].InNODEs[j]].NODE_level == 0){ // Input NODE's level info is not complete
+					NODE_queue.push(NODE_front); // Re-add front NODE to BFS queue
+					max_level = -1; // To make the front NODE's level be zero after this round
+					break;
+				}
 				if(NODES_map[NODES_map[NODE_front].InNODEs[j]].NODE_level > max_level){
 					max_level = NODES_map[NODES_map[NODE_front].InNODEs[j]].NODE_level;
 				}
