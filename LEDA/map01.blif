@@ -1,19 +1,34 @@
 .model map01
-.inputs a b c d e
-.outputs h j
-.names a b c d f
-1--- 1
--1-- 1
---1- 1
----1 1
-.names b d g
+.inputs a b c d e f g h i j k l m n
+.outputs o
+.names [25] [26] o
+11 1
+.names k x1 x2
 1- 1
 -1 1
-.names a f h
+.names [19] [20] x3
 1- 1
 -1 1
-.names d e f g i
-1111 1
-.names i j
-0 1
+.names n [18] x1
+11 1
+.names m l [18]
+11 1
+.names h g [19]
+1- 1
+-1 1
+.names j i [20]
+1- 1
+-1 1
+.names b a [21]
+11 1
+.names d c [22]
+11 1
+.names f e [23]
+11 1
+.names [22] [21] [24]
+11 1
+.names x3 [23] [25]
+11 1
+.names x2 [24] [26]
+11 1
 .end
