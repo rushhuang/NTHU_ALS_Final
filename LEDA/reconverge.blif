@@ -1,0 +1,10 @@
+.model reconverge
+.inputs a b
+.outputs o
+.names a b c
+11 1
+.names c d
+1 1
+.names c d o
+11 1
+.end
