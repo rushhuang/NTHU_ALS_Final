@@ -68,9 +68,7 @@ void topologicalSortUtil(std::map<std::string, NODE>& NODES_map, std::vector<NOD
 }
 
 // The function to do Topological Sort. It uses recursive topologicalSortUtil()
-void topologicalSort(std::map<std::string, NODE>& NODES_map, std::vector<NODE>& Total_NODES){
-    std::stack<std::string> Stack;
-  
+void topologicalSort(std::stack<std::string>& Stack, std::map<std::string, NODE>& NODES_map, std::vector<NODE>& Total_NODES){  
     // Mark all the vertices as not visited
     // std::map<std::string, bool>* visited = new std::map<std::string, bool>;
     std::map<std::string, bool> visited;
@@ -82,13 +80,13 @@ void topologicalSort(std::map<std::string, NODE>& NODES_map, std::vector<NODE>& 
     for (int i = 0; i < Total_NODES.size(); i++)
         if (visited[Total_NODES[i].NODE_name] == false)
             topologicalSortUtil(NODES_map, Total_NODES, Total_NODES[i].NODE_name, visited, Stack);
-  
+  	
     // Print contents of stack
-    while (Stack.empty() == false) {
-        cout << Stack.top() << " ";
-        Stack.pop();
-    }
-    cout << '\n';
+    // while (Stack.empty() == false) {
+    //     cout << Stack.top() << " ";
+    //     Stack.pop();
+    // }
+    // cout << '\n';
 }
 
 int main(int argc, char **argv){
@@ -337,90 +335,16 @@ int main(int argc, char **argv){
 		names_raw = relations_raw;
 	}
 
-	// cout << "-----------------------Checking------------------------\n";
-	// cout << "Total: " << Total_NODES.size() << " NODEs.\n";
-	// cout << "Node names: \n";
-	// for(std::vector<std::vector<std::string> >::const_iterator it = tree_nodes.begin(); it != tree_nodes.end(); ++it){
-	// 	for(std::vector<std::string>::const_iterator itr = it->begin(); itr != it->end(); ++itr){
-	// 		if(*itr == "1") cout << "AND ";
-	// 		else if(*itr == "2") cout << "OR ";
-	// 		else if(*itr == "3") cout << "INV ";
-	// 		else if(*itr == "4") cout << "CONSTANT_0";
-	// 		else if(*itr == "5") cout << "CONSTANT_1";
-	// 		else if(*itr == "6") cout << "BUFFER";
-	// 		else if(*itr == "7") cout << "UNKNOWN ";
-	// 		else cout << *itr << ' ';
-	// 	}
-	// 	cout << '\n';
-	// }
+	// DFS stack for topological order
+	std::stack<std::string> DFS_Stack;
+	topologicalSort(DFS_Stack, NODES_map, Total_NODES);
 
-	// for(std::map<std::string, NODE>::iterator it = NODES_map.begin(); it != NODES_map.end(); ++it){
-	// 	cout << "Index: " << it->first << " -> NODE: (" << it->second.NODE_name << ", ";
-	// 	if(it->second.NODE_level == -1) cout << "Level: UNDECIDED, ";
-	// 	else cout << "Level: " << it->second.NODE_level << ", ";
-	// 	if(it->second.NODE_type == "1") cout << "AND";
-	// 	else if(it->second.NODE_type == "2") cout << "OR";
-	// 	else if(it->second.NODE_type == "3") cout << "INVERTER";
-	// 	else if(it->second.NODE_type == "4") cout << "CONSTANT_0";
-	// 	else if(it->second.NODE_type == "5") cout << "CONSTANT_1";
-	// 	else if(it->second.NODE_type == "6") cout << "BUFFER";
-	// 	else if(it->second.NODE_type == "7") cout << "UNKNOWN";
-	// 	else cout << "PI/PO";
-	// 	cout << ")\n";
-	// 	cout << "Input NODEs (" << it->second.InNODEs.size() << "): \n";
-	// 	for(int i = 0; i < it->second.InNODEs.size(); ++i){
-	// 		cout << it->second.InNODEs[i] << ' ';
-	// 	}
-	// 	cout << '\n';
+	while (!DFS_Stack.empty()){
+		std::string NODE_front = DFS_Stack.top();
+        DFS_Stack.pop();
 
-	// 	cout << "Output NODEs (" << it->second.OutNODEs.size() << "): \n";
-	// 	for(int i = 0; i < it->second.OutNODEs.size(); ++i){
-	// 		cout << it->second.OutNODEs[i] << ' ';
-	// 	}
-	// 	cout << '\n';
-	// 	cout << "-----------------------------------------------\n";
-	// }
-
-
-	// cout << "-----------------------Checking------------------------\n";
-
-	topologicalSort(NODES_map, Total_NODES);
-	return 0 ;
-
-	// BFS Traversal to go through the graph in topological order
-	int BFS_count = 0; // To check how many unique nodes that are traversed
-	std::queue<std::string> NODE_queue;
-	// Starting BFS from BFS_seed list
-	for(std::vector<std::string>::const_iterator it = BFS_seed.begin(); it != BFS_seed.end(); ++it){
-		NODE_queue.push(*it);
-		BFS_count++;
-	}
-
-	while(!NODE_queue.empty()){
-		std::string NODE_front = NODE_queue.front();
-		NODE_queue.pop();
-
-		// Add output NODEs into the queue
-		for(int i = 0; i < NODES_map[NODE_front].OutNODEs.size(); ++i){
-			bool add_output_list = true;
-			for(int j = 0; j < NODES_map[NODES_map[NODE_front].OutNODEs[i]].InNODEs.size(); ++j){
-				// Check if output NODE's input NODEs have complete level info: for topological order with BFS
-				if(NODES_map[NODES_map[NODES_map[NODE_front].OutNODEs[i]].InNODEs[j]].NODE_level == -1){
-					add_output_list = false;
-					break;
-				}
-			}
-			if(add_output_list){ // Add the output NODE only if its input NODEs have complete level info.
-				NODE_queue.push(NODES_map[NODE_front].OutNODEs[i]);
-			}
-			else{ // Add the front NODE back to the queue for later ouput NODEs traversal
-				NODE_queue.push(NODE_front);
-			}
-		}
-
-		// Update NODE level for level undecided NODE
+        // Update NODE level for level undecided NODE
 		if(NODES_map[NODE_front].NODE_level == -1){
-			BFS_count++;
 
 			// Breaking down the nodes with more than two inputs
 			while(NODES_map[NODE_front].InNODEs.size() > 2){
@@ -511,11 +435,10 @@ int main(int argc, char **argv){
 				NODES_map[new_name] = tmp_node;
 			}
 
-			// Get the level for each node in BFS traversal without transform to two inputs graph
+			// Update the front NODE level to the max of the two input NODEs
 			int max_level = -1;
 			for(int j = 0; j < NODES_map[NODE_front].InNODEs.size(); ++j){
 				if(NODES_map[NODES_map[NODE_front].InNODEs[j]].NODE_level == -1){ // Input NODE's level info is not complete
-					NODE_queue.push(NODE_front); // Re-add front NODE to BFS queue
 					max_level = -2; // To make the front NODE's level be -1 after this round
 					break;
 				}
@@ -525,7 +448,147 @@ int main(int argc, char **argv){
 			}
 			NODES_map[NODE_front].NODE_level = max_level+1;
 		}
-	}
+    }
+
+	// // BFS Traversal to go through the graph in topological order
+	// int BFS_count = 0; // To check how many unique nodes that are traversed
+	// std::queue<std::string> NODE_queue;
+	// // Starting BFS from BFS_seed list
+	// for(std::vector<std::string>::const_iterator it = BFS_seed.begin(); it != BFS_seed.end(); ++it){
+	// 	NODE_queue.push(*it);
+	// 	BFS_count++;
+	// }
+
+	// while(!NODE_queue.empty()){
+	// 	std::string NODE_front = NODE_queue.front();
+	// 	NODE_queue.pop();
+
+	// 	// Add output NODEs into the queue
+	// 	for(int i = 0; i < NODES_map[NODE_front].OutNODEs.size(); ++i){
+	// 		bool add_output_list = true;
+	// 		for(int j = 0; j < NODES_map[NODES_map[NODE_front].OutNODEs[i]].InNODEs.size(); ++j){
+	// 			// Check if output NODE's input NODEs have complete level info: for topological order with BFS
+	// 			if(NODES_map[NODES_map[NODES_map[NODE_front].OutNODEs[i]].InNODEs[j]].NODE_level == -1){
+	// 				add_output_list = false;
+	// 				break;
+	// 			}
+	// 		}
+	// 		if(add_output_list){ // Add the output NODE only if its input NODEs have complete level info.
+	// 			NODE_queue.push(NODES_map[NODE_front].OutNODEs[i]);
+	// 		}
+	// 		else{ // Add the front NODE back to the queue for later ouput NODEs traversal
+	// 			NODE_queue.push(NODE_front);
+	// 		}
+	// 	}
+
+	// 	// Update NODE level for level undecided NODE
+	// 	if(NODES_map[NODE_front].NODE_level == -1){
+	// 		BFS_count++;
+
+	// 		// Breaking down the nodes with more than two inputs
+	// 		while(NODES_map[NODE_front].InNODEs.size() > 2){
+	// 			int smallest = INT_MAX;
+	// 			int small_second = INT_MAX;
+	// 			int smallest_idx = -1;
+	// 			int small_second_idx = -1;
+	// 			NODE tmp_node;
+	// 			NODE smallest_NODE;
+	// 			NODE small_second_NODE;
+
+	// 			// For new NODE name
+	// 			stringstream i2s;
+	// 			i2s << NODES_map.size();
+	// 			std::string new_name = i2s.str();
+
+	// 			// Find the smallest two
+	// 			for(int k = 0; k < NODES_map[NODE_front].InNODEs.size(); ++k){
+	// 				if(NODES_map[NODES_map[NODE_front].InNODEs[k]].NODE_level < smallest){
+	// 					if(smallest != small_second){
+	// 						small_second = smallest;
+	// 						small_second_idx = smallest_idx;
+	// 					}
+	// 					smallest = NODES_map[NODES_map[NODE_front].InNODEs[k]].NODE_level;
+	// 					smallest_idx = k;
+	// 				}
+	// 				else{
+	// 					if(NODES_map[NODES_map[NODE_front].InNODEs[k]].NODE_level != smallest || smallest != small_second){
+	// 						if(NODES_map[NODES_map[NODE_front].InNODEs[k]].NODE_level < small_second){
+	// 							small_second = NODES_map[NODES_map[NODE_front].InNODEs[k]].NODE_level;
+	// 							small_second_idx = k;
+	// 						}
+	// 					}
+	// 				}
+	// 			}
+				
+	// 			// Create a new NODE
+	// 			new_name = "[" + new_name + "]";
+	// 			tmp_node.NODE_name = new_name;
+	// 			// Copy the original gate type to new NODE
+	// 			tmp_node.NODE_type = NODES_map[NODE_front].NODE_type;
+	// 			// Add the smallest two NODES into new NODE's input NODE list
+	// 			tmp_node.InNODEs.push_back(NODES_map[NODE_front].InNODEs[smallest_idx]);
+	// 			tmp_node.InNODEs.push_back(NODES_map[NODE_front].InNODEs[small_second_idx]);
+	// 			// Add the gate NODE into new NODE's output NODE list
+	// 			tmp_node.OutNODEs.push_back(NODE_front);
+
+	// 			smallest_NODE = NODES_map[NODES_map[NODE_front].InNODEs[smallest_idx]];
+	// 			small_second_NODE = NODES_map[NODES_map[NODE_front].InNODEs[small_second_idx]];
+
+	// 			// Use the max level of the two input NODES +1 as the level of new NODE
+	// 			tmp_node.NODE_level = ((smallest_NODE.NODE_level > small_second_NODE.NODE_level) ?
+	// 									smallest_NODE.NODE_level : small_second_NODE.NODE_level) + 1;
+
+	// 			// Delete gate NODE from the smallest two NODEs' output NODE list
+	// 			// CANNOT use new NODE variable (smallest_NODE, small_second_NODE) to adjust original output NODE lists
+	// 			NODES_map[NODES_map[NODE_front].InNODEs[smallest_idx]].OutNODEs.erase(
+	// 				std::remove(NODES_map[NODES_map[NODE_front].InNODEs[smallest_idx]].OutNODEs.begin(),
+	// 							NODES_map[NODES_map[NODE_front].InNODEs[smallest_idx]].OutNODEs.end(),
+	// 							NODE_front),
+	// 				NODES_map[NODES_map[NODE_front].InNODEs[smallest_idx]].OutNODEs.end());
+	// 			NODES_map[NODES_map[NODE_front].InNODEs[small_second_idx]].OutNODEs.erase(
+	// 				std::remove(NODES_map[NODES_map[NODE_front].InNODEs[small_second_idx]].OutNODEs.begin(),
+	// 							NODES_map[NODES_map[NODE_front].InNODEs[small_second_idx]].OutNODEs.end(),
+	// 							NODE_front),
+	// 				NODES_map[NODES_map[NODE_front].InNODEs[small_second_idx]].OutNODEs.end());
+
+	// 			// Add the new NODE to the smallest two NODEs' output NODE list
+	// 			NODES_map[NODES_map[NODE_front].InNODEs[smallest_idx]].OutNODEs.push_back(new_name);
+	// 			NODES_map[NODES_map[NODE_front].InNODEs[small_second_idx]].OutNODEs.push_back(new_name);
+
+	// 			// Delete the smallest two NODEs from gate NODE's input NODE list
+	// 			NODES_map[NODE_front].InNODEs.erase(NODES_map[NODE_front].InNODEs.begin() + smallest_idx);
+	// 			if(smallest_idx < small_second_idx){ // To prevent from mis-indexing caused by deleting from previous line
+	// 				NODES_map[NODE_front].InNODEs.erase(NODES_map[NODE_front].InNODEs.begin() + small_second_idx-1);
+	// 			}
+	// 			else{
+	// 				NODES_map[NODE_front].InNODEs.erase(NODES_map[NODE_front].InNODEs.begin() + small_second_idx);
+	// 			}
+
+	// 			// Add the new NODE to gate NODE input NODE list
+	// 			NODES_map[NODE_front].InNODEs.push_back(new_name);
+
+	// 			// PUT new NODE into total NODE list
+	// 			Total_NODES.push_back(tmp_node);
+		
+	// 			// Put new NODE into NODE map
+	// 			NODES_map[new_name] = tmp_node;
+	// 		}
+
+	// 		// Get the level for each node in BFS traversal without transform to two inputs graph
+	// 		int max_level = -1;
+	// 		for(int j = 0; j < NODES_map[NODE_front].InNODEs.size(); ++j){
+	// 			if(NODES_map[NODES_map[NODE_front].InNODEs[j]].NODE_level == -1){ // Input NODE's level info is not complete
+	// 				NODE_queue.push(NODE_front); // Re-add front NODE to BFS queue
+	// 				max_level = -2; // To make the front NODE's level be -1 after this round
+	// 				break;
+	// 			}
+	// 			if(NODES_map[NODES_map[NODE_front].InNODEs[j]].NODE_level > max_level){
+	// 				max_level = NODES_map[NODES_map[NODE_front].InNODEs[j]].NODE_level;
+	// 			}
+	// 		}
+	// 		NODES_map[NODE_front].NODE_level = max_level+1;
+	// 	}
+	// }
 
 	// To check how many unique nodes that are traversed
 	// cout << "BFS count: " << BFS_count << ", Total nodes count: " << NODES_map.size() << '\n';
