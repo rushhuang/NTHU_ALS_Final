@@ -8,6 +8,7 @@
 #include <vector>
 #include <map>
 #include <queue>
+#include <stack>
 #include <climits> // INT_MAX
 #include <algorithm> // std::remove
 using namespace std;
@@ -48,6 +49,47 @@ struct NODE{
 	// Output nodes
 	std::vector<std::string> OutNODEs;
 };
+
+// Reference:
+// https://www.geeksforgeeks.org/cpp-program-for-topological-sorting/
+// A recursive function used by topologicalSort
+void topologicalSortUtil(std::map<std::string, NODE>& NODES_map, std::vector<NODE>& Total_NODES,
+						 std::string v, std::map<std::string, bool>& visited, std::stack<std::string>& Stack){
+    // Mark the current node as visited.
+    visited[v] = true;
+  
+    // Recur for all the vertices adjacent to this vertex
+    for (std::vector<std::string>::iterator i = NODES_map[v].OutNODEs.begin(); i != NODES_map[v].OutNODEs.end(); ++i)
+        if (!visited[*i])
+            topologicalSortUtil(NODES_map, Total_NODES, *i, visited, Stack);
+  
+    // Push current vertex to stack which stores result
+    Stack.push(v);
+}
+
+// The function to do Topological Sort. It uses recursive topologicalSortUtil()
+void topologicalSort(std::map<std::string, NODE>& NODES_map, std::vector<NODE>& Total_NODES){
+    std::stack<std::string> Stack;
+  
+    // Mark all the vertices as not visited
+    // std::map<std::string, bool>* visited = new std::map<std::string, bool>;
+    std::map<std::string, bool> visited;
+    for (int i = 0; i < Total_NODES.size(); i++)
+        visited[Total_NODES[i].NODE_name] = false;
+  
+    // Call the recursive helper function to store Topological
+    // Sort starting from all vertices one by one
+    for (int i = 0; i < Total_NODES.size(); i++)
+        if (visited[Total_NODES[i].NODE_name] == false)
+            topologicalSortUtil(NODES_map, Total_NODES, Total_NODES[i].NODE_name, visited, Stack);
+  
+    // Print contents of stack
+    while (Stack.empty() == false) {
+        cout << Stack.top() << " ";
+        Stack.pop();
+    }
+    cout << '\n';
+}
 
 int main(int argc, char **argv){
 	// cout << "Total: " << argc << " arguments fed!\n";
@@ -341,6 +383,9 @@ int main(int argc, char **argv){
 
 
 	// cout << "-----------------------Checking------------------------\n";
+
+	topologicalSort(NODES_map, Total_NODES);
+	return 0 ;
 
 	// BFS Traversal to go through the graph in topological order
 	int BFS_count = 0; // To check how many unique nodes that are traversed
