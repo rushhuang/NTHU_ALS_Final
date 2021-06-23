@@ -336,12 +336,13 @@ int main(int argc, char **argv){
 	}
 
 	// DFS stack for topological order
-	std::stack<std::string> DFS_Stack;
-	topologicalSort(DFS_Stack, NODES_map, Total_NODES);
+	std::stack<std::string> Labeling_Stack;
+	topologicalSort(Labeling_Stack, NODES_map, Total_NODES);
 
-	while (!DFS_Stack.empty()){
-		std::string NODE_front = DFS_Stack.top();
-        DFS_Stack.pop();
+	// Traverse the graph in topological order and assign FlowMap label (level) to each NODE.
+	while (!Labeling_Stack.empty()){
+		std::string NODE_front = Labeling_Stack.top();
+        Labeling_Stack.pop();
 
         // Update NODE level for level undecided NODE
 		if(NODES_map[NODE_front].NODE_level == -1){
@@ -448,6 +449,220 @@ int main(int argc, char **argv){
 			}
 			NODES_map[NODE_front].NODE_level = max_level+1;
 		}
+    }
+
+    // Get the topological order for newly decomposed newwork
+    std::stack<std::string> FlowMap_cut_Stack;
+	topologicalSort(FlowMap_cut_Stack, NODES_map, Total_NODES);
+
+	// Create a map to record l(v) for a given node name
+	std::map<std::string, int> FlowMap_NODE_label;
+	// Initialize l(v)=0 for v in PI list
+	for(std::vector<std::string>::const_iterator it = PIs.begin(); it != PIs.end(); ++it){
+		FlowMap_NODE_label[*it] = 0;
+	}
+
+	// Save all the collapsed network N_t' as a map
+	std::map<std::string, std::map<std::string, node> > N_t_prime_map;
+
+    // FlowMap cut
+    cout << "FlowMap cut sequence:\n";
+    while (!FlowMap_cut_Stack.empty()){
+		std::string NODE_front = FlowMap_cut_Stack.top();
+        FlowMap_cut_Stack.pop();
+
+        // Skip the PI nodes, CONSTANT as well
+        if(NODES_map[NODE_front].InNODEs.size()==0) continue;
+
+        cout << "Subgraph ending at " << NODE_front << ": \n";
+
+        // Construct subnetwork N_t backtracking from NODE t (NODE_front)
+		graph N_t;
+		node tmp_node;
+		edge tmp_edge;
+		std::queue<std::string> N_t_traversal; // For BFS traversal
+		std::map<std::string, node> N_t_node_mapping; // Recording N_t nodes
+
+		// Create node t and map it with its name
+		node t = N_t.new_node();
+		N_t_node_mapping[NODE_front] = t;
+
+		// Set the front NODE as BFS traversal root
+		N_t_traversal.push(NODE_front);
+
+		// Subnetwork N_t construction
+		while(!N_t_traversal.empty()){
+			std::string predecessor = N_t_traversal.front();
+			N_t_traversal.pop();
+
+			// Build edges to connect this node with all its descendant
+			for(int i = 0; i < NODES_map[predecessor].InNODEs.size(); ++i){
+				// NODES_map[predecessor].InNODEs[i] has already been visited
+				if(N_t_node_mapping.count(NODES_map[predecessor].InNODEs[i]) > 0) continue;
+
+				// NODES_map[predecessor].InNODEs[i] has not been visited
+				N_t_traversal.push(NODES_map[predecessor].InNODEs[i]);
+
+				// Create a new node for predecessor's input node that has not been visited
+				tmp_node = N_t.new_node();
+
+				// Map the new node with its name
+				N_t_node_mapping[NODES_map[predecessor].InNODEs[i]] = tmp_node;
+
+				// Create a edge to connect the new input node and predecessor node
+				tmp_edge = N_t.new_edge(N_t_node_mapping[NODES_map[predecessor].InNODEs[i]], N_t_node_mapping[predecessor]);
+				cout << NODES_map[predecessor].InNODEs[i] << " -> " << predecessor << '\n';
+			}
+		}
+
+		// Let p = max{l(u): u in input(t)}
+		int p = -1;
+		for(int i = 0; i < NODES_map[NODE_front].InNODEs.size(); ++i){
+			if(FlowMap_NODE_label[NODES_map[NODE_front].InNODEs[i]] > p){
+				p = FlowMap_NODE_label[NODES_map[NODE_front].InNODEs[i]];
+			}
+		}
+		FlowMap_NODE_label[NODE_front] = p;
+
+		cout << "\np(" << NODE_front << "): " << p << '\n';
+
+		// Create a new graph N_t_copied
+		graph N_t_copied;
+		N_t_copied = N_t; // Copy N_t graph and memory addresses of its nodes have also changed.
+
+		// Copplapse all nodes in N_t with label p into t as new node t_prime
+		std::vector<std::string> Collapsed_nodes;
+		std::string t_prime_name = NODE_front+"_prime";
+		node t_prime = N_t.new_node();
+		for(std::map<std::string, node>::iterator it = N_t_node_mapping.begin(); it != N_t_node_mapping.end(); ++it){
+			if(FlowMap_NODE_label[it->first] == p){
+				Collapsed_nodes.push_back(it->first);
+			}
+		}
+		for(std::vector<std::string>::iterator it = Collapsed_nodes.begin(); it != Collapsed_nodes.end(); ++it){
+			// N_t node with label p
+			if(FlowMap_NODE_label[*it] == p){
+				cout << *it << "(";
+				N_t.print_node(N_t_node_mapping[*it]);
+				cout << ") has label: " << FlowMap_NODE_label[*it] << ", and p is: " << p << '\n';
+
+				for(int i = 0; i < NODES_map[*it].InNODEs.size(); ++i){
+					// If the input node of collapsed node is also need to be collapsed together with t
+					if(FlowMap_NODE_label[NODES_map[*it].InNODEs[i]] == p) continue;
+
+					// Connect input nodes of collapsed node to t_prime
+					N_t.new_edge(N_t_node_mapping[NODES_map[*it].InNODEs[i]], t_prime);
+				}
+
+				// Delete the collapsed node
+				N_t.hide_node(N_t_node_mapping[*it]);
+				N_t_node_mapping.erase(*it);
+			}
+		}
+		N_t_node_mapping[t_prime_name] = t_prime;
+
+		node print_node;
+		edge print_edge;
+		cout << "Collapsed network:\n";
+		cout << "\tNodes: ";
+		forall_nodes(print_node, N_t)
+			N_t.print_node(print_node);
+		cout << "\n\tEdges:\n";
+		forall_edges(print_edge, N_t){
+			N_t.print_edge(print_edge);
+			cout << '\n';
+		}
+
+		cout << "Copied original network:\n";
+		cout << "\tNodes: ";
+		forall_nodes(print_node, N_t_copied)
+			N_t_copied.print_node(print_node);
+		cout << "\n\tEdges:\n";
+		forall_edges(print_edge, N_t_copied){
+			N_t_copied.print_edge(print_edge);
+			cout << '\n';
+		}
+		cout << "-----------------------------------------------\n";
+
+		// edge e;
+		// forall_edges(e, N_t)
+		// 	N_t.print_edge(e);
+
+		// node n0 = G.new_node();
+		// node n1 = G.new_node();
+		// node n2 = G.new_node();
+		// node n3 = G.new_node();
+		// edge e0 = G.new_edge(n0, n1);
+		// edge e1 = G.new_edge(n1, n3);
+		// edge e2 = G.new_edge(n0, n2);
+		// edge e3 = G.new_edge(n2, n3);
+		// edge e4 = G.new_edge(n0, n3);
+
+		// node tmp_node;
+		// std::vector<node> node_list;
+		// for(int i = 0; i < 10; ++i){
+		// 	tmp_node = G.new_node();
+		// 	node_list.push_back(tmp_node);
+		// }
+
+		// edge tmp_edge;
+		// for(int i = 0; i < 9; ++i){
+		// 	tmp_edge = G.new_edge(node_list[i], node_list[node_list.size()-1]);
+		// }
+
+		// Assign edge weights
+		// edge_array<int> weight(G);
+		// weight[e0] = 1;
+		// weight[e1] = 3;
+		// weight[e2] = 2;
+		// weight[e3] = 2;
+		// weight[e4] = 5;
+
+
+		// for(int i = 0; i < 10; ++i){
+		// 	cout << "Node [" << i << "]:\n";
+		// 	cout << "Address: " << node_list[i] << ", Value: ";
+		// 	G.print_node(node_list[i]);
+		// 	cout << ", Degree: " << G.indeg(node_list[i]);
+		// 	cout << '\n';
+		// }
+
+		// cout << "Degree [n0]: " << G.indeg(n0);
+		// cout << '\n';
+		// cout << "Degree [n1]: " << G.indeg(n1);
+		// cout << '\n';
+		// cout << "Degree [n2]: " << G.indeg(n2);
+		// cout << '\n';
+		// cout << "Degree [n3]: " << G.indeg(n3);
+		// cout << '\n';
+
+		// forall_in_edges(tmp_edge, node_list[node_list.size()-1])
+		// 	weight[tmp_edge] = 2;
+
+		// int total_weight = 0;
+		// forall_in_edges(tmp_edge, node_list[node_list.size()-1])
+		// 	total_weight += weight[tmp_edge];
+		// cout << total_weight << '\n';
+
+		// const list<node> All_nodes = G.all_nodes();
+		// node n;
+		// forall(n, All_nodes)
+		// 	G.print_node(n);
+		// cout << endl;
+
+
+		// Min cut algorithm
+		// list<node> cut;
+		// int cut_value = MIN_CUT(G, weight, cut);
+
+		// cout << "The minimum cut has value: " << cut_value << endl;
+		// cout << "cut:";
+		// node v;
+		// forall(v, cut)
+		// 	G.print_node(v);
+		// cout << endl;
+
+		// G.del_all_nodes();
     }
 
 	// // BFS Traversal to go through the graph in topological order
@@ -593,110 +808,32 @@ int main(int argc, char **argv){
 	// To check how many unique nodes that are traversed
 	// cout << "BFS count: " << BFS_count << ", Total nodes count: " << NODES_map.size() << '\n';
 
-	for(std::map<std::string, NODE>::iterator it = NODES_map.begin(); it != NODES_map.end(); ++it){
-		cout << "Index: " << it->first << " -> NODE: (" << it->second.NODE_name << ", ";
-		if(it->second.NODE_level == -1) cout << "Level: UNDECIDED, ";
-		else cout << "Level: " << it->second.NODE_level << ", ";
-		if(it->second.NODE_type == "1") cout << "AND";
-		else if(it->second.NODE_type == "2") cout << "OR";
-		else if(it->second.NODE_type == "3") cout << "INVERTER";
-		else if(it->second.NODE_type == "4") cout << "CONSTANT_0";
-		else if(it->second.NODE_type == "5") cout << "CONSTANT_1";
-		else if(it->second.NODE_type == "6") cout << "BUFFER";
-		else if(it->second.NODE_type == "7") cout << "UNKNOWN";
-		else cout << "PI/PO";
-		cout << ")\n";
-		cout << "Input NODEs (" << it->second.InNODEs.size() << "): \n";
-		for(int i = 0; i < it->second.InNODEs.size(); ++i){
-			cout << it->second.InNODEs[i] << ' ';
-		}
-		cout << '\n';
-
-		cout << "Output NODEs (" << it->second.OutNODEs.size() << "): \n";
-		for(int i = 0; i < it->second.OutNODEs.size(); ++i){
-			cout << it->second.OutNODEs[i] << ' ';
-		}
-		cout << '\n';
-		cout << "-----------------------------------------------\n";
-	}
-
-
-	// Graph construction
-	// graph G;
-	// node n0 = G.new_node();
-	// node n1 = G.new_node();
-	// node n2 = G.new_node();
-	// node n3 = G.new_node();
-	// edge e0 = G.new_edge(n0, n1);
-	// edge e1 = G.new_edge(n1, n3);
-	// edge e2 = G.new_edge(n0, n2);
-	// edge e3 = G.new_edge(n2, n3);
-	// edge e4 = G.new_edge(n0, n3);
-
-	// node tmp_node;
-	// std::vector<node> node_list;
-	// for(int i = 0; i < 10; ++i){
-	// 	tmp_node = G.new_node();
-	// 	node_list.push_back(tmp_node);
-	// }
-
-	// edge tmp_edge;
-	// for(int i = 0; i < 9; ++i){
-	// 	tmp_edge = G.new_edge(node_list[i], node_list[node_list.size()-1]);
-	// }
-
-	// Assign edge weights
-	// edge_array<int> weight(G);
-	// weight[e0] = 1;
-	// weight[e1] = 3;
-	// weight[e2] = 2;
-	// weight[e3] = 2;
-	// weight[e4] = 5;
-
-
-	// for(int i = 0; i < 10; ++i){
-	// 	cout << "Node [" << i << "]:\n";
-	// 	cout << "Address: " << node_list[i] << ", Value: ";
-	// 	G.print_node(node_list[i]);
-	// 	cout << ", Degree: " << G.indeg(node_list[i]);
+	// for(std::map<std::string, NODE>::iterator it = NODES_map.begin(); it != NODES_map.end(); ++it){
+	// 	cout << "Index: " << it->first << " -> NODE: (" << it->second.NODE_name << ", ";
+	// 	if(it->second.NODE_level == -1) cout << "Level: UNDECIDED, ";
+	// 	else cout << "Level: " << it->second.NODE_level << ", ";
+	// 	if(it->second.NODE_type == "1") cout << "AND";
+	// 	else if(it->second.NODE_type == "2") cout << "OR";
+	// 	else if(it->second.NODE_type == "3") cout << "INVERTER";
+	// 	else if(it->second.NODE_type == "4") cout << "CONSTANT_0";
+	// 	else if(it->second.NODE_type == "5") cout << "CONSTANT_1";
+	// 	else if(it->second.NODE_type == "6") cout << "BUFFER";
+	// 	else if(it->second.NODE_type == "7") cout << "UNKNOWN";
+	// 	else cout << "PI/PO";
+	// 	cout << ")\n";
+	// 	cout << "Input NODEs (" << it->second.InNODEs.size() << "): \n";
+	// 	for(int i = 0; i < it->second.InNODEs.size(); ++i){
+	// 		cout << it->second.InNODEs[i] << ' ';
+	// 	}
 	// 	cout << '\n';
+
+	// 	cout << "Output NODEs (" << it->second.OutNODEs.size() << "): \n";
+	// 	for(int i = 0; i < it->second.OutNODEs.size(); ++i){
+	// 		cout << it->second.OutNODEs[i] << ' ';
+	// 	}
+	// 	cout << '\n';
+	// 	cout << "-----------------------------------------------\n";
 	// }
 
-	// cout << "Degree [n0]: " << G.indeg(n0);
-	// cout << '\n';
-	// cout << "Degree [n1]: " << G.indeg(n1);
-	// cout << '\n';
-	// cout << "Degree [n2]: " << G.indeg(n2);
-	// cout << '\n';
-	// cout << "Degree [n3]: " << G.indeg(n3);
-	// cout << '\n';
-
-	// forall_in_edges(tmp_edge, node_list[node_list.size()-1])
-	// 	weight[tmp_edge] = 2;
-
-	// int total_weight = 0;
-	// forall_in_edges(tmp_edge, node_list[node_list.size()-1])
-	// 	total_weight += weight[tmp_edge];
-	// cout << total_weight << '\n';
-
-	// const list<node> All_nodes = G.all_nodes();
-	// node n;
-	// forall(n, All_nodes)
-	// 	G.print_node(n);
-	// cout << endl;
-
-
-	// Min cut algorithm
-	// list<node> cut;
-	// int cut_value = MIN_CUT(G, weight, cut);
-
-	// cout << "The minimum cut has value: " << cut_value << endl;
-	// cout << "cut:";
-	// node v;
-	// forall(v, cut)
-	// 	G.print_node(v);
-	// cout << endl;
-
-	// G.del_all_nodes();
 	return 0;
 }
