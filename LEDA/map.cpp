@@ -451,6 +451,115 @@ int main(int argc, char **argv){
 		}
     }
 
+    // Output blif file
+    ofstream outblif;
+    outblif.open(output_file_name);
+
+    outblif << model_name_raw << '\n';
+    outblif << primary_input_raw << '\n';
+    outblif << primary_output_raw << '\n';
+
+    cout << model_name_raw << '\n';
+    cout << primary_input_raw << '\n';
+    cout << primary_output_raw << '\n';
+
+    std::queue<std::string> Output_traversal;
+    std::map<std::string, bool> Output_visited_NODEs;
+    // cout << "PO: ";
+    for(int i = 0; i < POs.size(); ++i){
+    	Output_traversal.push(POs[i]);
+    	// cout << POs[i] << ' ';
+    }
+    // cout << '\n';
+
+    while(!Output_traversal.empty()){
+    	std::string this_node = Output_traversal.front();
+    	Output_traversal.pop();
+
+    	// Skip NODEs that have been added multiple times before it is really traversed
+    	if(Output_visited_NODEs.count(this_node) != 0) continue;
+
+    	Output_visited_NODEs[this_node] = true;
+
+    	if(NODES_map[this_node].NODE_type == "0") continue; // PI does not need to be printed as .names
+
+		outblif << ".names ";
+		cout << ".names ";
+    	for(int i = 0; i < NODES_map[this_node].InNODEs.size(); ++i){
+    		// Only the unvisited NODEs need to be put in the queue
+    		if(Output_visited_NODEs.count(NODES_map[this_node].InNODEs[i]) == 0)
+    			Output_traversal.push(NODES_map[this_node].InNODEs[i]);
+
+    		outblif << NODES_map[this_node].InNODEs[i] << ' ';
+    		cout << NODES_map[this_node].InNODEs[i] << ' ';
+    	}
+    	outblif << this_node << '\n';
+    	cout << this_node << '\n';
+
+    	if(NODES_map[this_node].NODE_type == "1"){
+    		// cout << "AND";
+    		// For input NODEs
+    		for(int i = 0; i < NODES_map[this_node].InNODEs.size(); ++i){
+    			outblif << "1";
+    			cout << "1";
+    		}
+    		outblif << ' ';
+    		cout << ' ';
+
+    		// For gate NODE
+    		outblif << "1\n";
+    		cout << "1\n";
+    	}
+		else if(NODES_map[this_node].NODE_type == "2"){
+			// cout << "OR";
+			for(int i = 0; i < NODES_map[this_node].InNODEs.size(); ++i){
+				// For input NODEs
+				for(int j = 0; j < NODES_map[this_node].InNODEs.size(); ++j){
+					if(i == j){
+						outblif << "1";
+						cout << "1";
+					}
+					else{
+						outblif << "-";
+						cout << "-";
+					}
+				}
+				// For output NODEs
+				outblif << " 1\n";
+				cout << " 1\n";
+			}
+		}
+		else if(NODES_map[this_node].NODE_type == "3"){
+			// cout << "INVERTER";
+			outblif << "0 1\n";
+			cout << "0 1\n";
+		}
+		else if(NODES_map[this_node].NODE_type == "4"){
+			// cout << "CONSTANT_0";
+			continue;
+		}
+		else if(NODES_map[this_node].NODE_type == "5"){
+			// cout << "CONSTANT_1";
+			outblif << "1\n";
+			cout << "1\n";
+		}
+		else if(NODES_map[this_node].NODE_type == "6"){
+			// cout << "BUFFER";
+			outblif << "1 1\n";
+			cout << "1 1\n";
+		}
+		else if(NODES_map[this_node].NODE_type == "7"){
+			cout << "UNKNOWN\n";
+		}
+    }
+
+
+    outblif << ".end";
+    cout << ".end\n";
+    outblif.close();
+
+    return 0;
+
     // Get the topological order for newly decomposed newwork
     std::stack<std::string> FlowMap_cut_Stack;
 	topologicalSort(FlowMap_cut_Stack, NODES_map, Total_NODES);
@@ -508,7 +617,7 @@ int main(int argc, char **argv){
 
 				// Create a edge to connect the new input node and predecessor node
 				tmp_edge = N_t.new_edge(N_t_node_mapping[NODES_map[predecessor].InNODEs[i]], N_t_node_mapping[predecessor]);
-				cout << NODES_map[predecessor].InNODEs[i] << " -> " << predecessor << '\n';
+				// cout << NODES_map[predecessor].InNODEs[i] << " -> " << predecessor << '\n';
 			}
 		}
 
@@ -521,7 +630,7 @@ int main(int argc, char **argv){
 		}
 		FlowMap_NODE_label[NODE_front] = p; // Temporarily assign p as the front NODE's label value
 
-		cout << "\np(" << NODE_front << "): " << p << '\n';
+		// cout << "\np(" << NODE_front << "): " << p << '\n';
 
 		// Create a new graph N_t_copied
 		graph N_t_copied; // Representing original N_t
@@ -547,9 +656,9 @@ int main(int argc, char **argv){
 		for(std::vector<std::string>::iterator it = Collapsed_nodes.begin(); it != Collapsed_nodes.end(); ++it){
 			// N_t node with label p
 			if(FlowMap_NODE_label[*it] == p){
-				cout << *it << "(";
-				N_t.print_node(N_t_node_mapping[*it]);
-				cout << ") has label: " << FlowMap_NODE_label[*it] << ", and p is: " << p << '\n';
+				// cout << *it << "(";
+				// N_t.print_node(N_t_node_mapping[*it]);
+				// cout << ") has label: " << FlowMap_NODE_label[*it] << ", and p is: " << p << '\n';
 
 				for(int i = 0; i < NODES_map[*it].InNODEs.size(); ++i){
 					// If the input node of collapsed node is also need to be collapsed together with t
@@ -576,48 +685,48 @@ int main(int argc, char **argv){
 		edge print_edge;
 
 		// Add sink node
-		cout << "\nLinking sink with PI...\n";
+		// cout << "\nLinking sink with PI...\n";
 		node sink_node = N_t.new_node();
 		N_t_node_mapping["sink"] = sink_node;
 		FlowMap_NODE_label["sink"] = 0;
 		forall_nodes(print_node, N_t){
 			if(N_t.indeg(print_node) == 0 && print_node != sink_node){ // Link sink node to every PI of N_t
 				N_t.new_edge(sink_node, print_node);
-				N_t.print_node(sink_node);
-				cout << " -> ";
-				N_t.print_node(print_node);
-				cout << '\n';
+				// N_t.print_node(sink_node);
+				// cout << " -> ";
+				// N_t.print_node(print_node);
+				// cout << '\n';
 			}
 		}
 
-		cout << "\nNode name -> [node number]:\n";
-		for(std::map<std::string, node>::iterator iter = N_t_node_mapping.begin(); iter != N_t_node_mapping.end(); ++iter){
-			cout << iter->first << " -> ";
-			N_t.print_node(iter->second);
-			cout << '\n';
-		}
+		// cout << "\nNode name -> [node number]:\n";
+		// for(std::map<std::string, node>::iterator iter = N_t_node_mapping.begin(); iter != N_t_node_mapping.end(); ++iter){
+		// 	cout << iter->first << " -> ";
+		// 	N_t.print_node(iter->second);
+		// 	cout << '\n';
+		// }
 
-		cout << "\nCollapsed network:\n";
-		cout << "\tNodes: ";
-		forall_nodes(print_node, N_t)
-			N_t.print_node(print_node);
-		cout << "\n\tEdges:\n";
-		forall_edges(print_edge, N_t){
-			N_t.print_edge(print_edge);
-			cout << '\n';
-		}
-		cout << '\n';
+		// cout << "\nCollapsed network:\n";
+		// cout << "\tNodes: ";
+		// forall_nodes(print_node, N_t)
+		// 	N_t.print_node(print_node);
+		// cout << "\n\tEdges:\n";
+		// forall_edges(print_edge, N_t){
+		// 	N_t.print_edge(print_edge);
+		// 	cout << '\n';
+		// }
+		// cout << '\n';
 
-		cout << "Copied original network:\n";
-		cout << "\tNodes: ";
-		forall_nodes(print_node, N_t_copied)
-			N_t_copied.print_node(print_node);
-		cout << "\n\tEdges:\n";
-		forall_edges(print_edge, N_t_copied){
-			N_t_copied.print_edge(print_edge);
-			cout << '\n';
-		}
-		cout << '\n';
+		// cout << "Copied original network:\n";
+		// cout << "\tNodes: ";
+		// forall_nodes(print_node, N_t_copied)
+		// 	N_t_copied.print_node(print_node);
+		// cout << "\n\tEdges:\n";
+		// forall_edges(print_edge, N_t_copied){
+		// 	N_t_copied.print_edge(print_edge);
+		// 	cout << '\n';
+		// }
+		// cout << '\n';
 
 		// Transform N_t_prime to N_t_prime_prime to perform min cut on nodes
 		graph N_t_copied_copied; // Representing N_t_prime
@@ -633,9 +742,10 @@ int main(int argc, char **argv){
 			// Duplicate each node except for t_prime and sink
 			if(current_total_node_list[i] == t_prime || current_total_node_list[i] == sink_node) continue;
 
-			cout << "Splitting node ";
-			N_t.print_node(current_total_node_list[i]);
-			cout << " now...\n";
+			// cout << "Splitting node ";
+			// N_t.print_node(current_total_node_list[i]);
+			// cout << " now...\n";
+
 			node node_dup = N_t.new_node();
 
 			// Link the input nodes of original node to duplicated node
@@ -648,10 +758,10 @@ int main(int argc, char **argv){
 			// Link between duplicated node and original node
 			edge node_edge = N_t.new_edge(node_dup, current_total_node_list[i]); // node_dup -> node_original
 			node_dup_edges.push_back(node_edge);
-			N_t.print_node(node_dup);
-			cout << " -> ";
-			N_t.print_node(current_total_node_list[i]);
-			cout << '\n';
+			// N_t.print_node(node_dup);
+			// cout << " -> ";
+			// N_t.print_node(current_total_node_list[i]);
+			// cout << '\n';
 		}
 
 		// Assign edge weights
@@ -664,16 +774,16 @@ int main(int argc, char **argv){
 			weight[node_dup_edges[i]] = 1;
 		}
 
-		cout << "Split network:\n";
-		cout << "\tNodes: ";
-		forall_nodes(print_node, N_t)
-			N_t.print_node(print_node);
-		cout << "\n\tEdges:\n";
-		forall_edges(print_edge, N_t){
-			N_t.print_edge(print_edge);
-			cout << ", weight: " << weight[print_edge] << '\n';
-		}
-		cout << '\n';
+		// cout << "Split network:\n";
+		// cout << "\tNodes: ";
+		// forall_nodes(print_node, N_t)
+		// 	N_t.print_node(print_node);
+		// cout << "\n\tEdges:\n";
+		// forall_edges(print_edge, N_t){
+		// 	N_t.print_edge(print_edge);
+		// 	cout << ", weight: " << weight[print_edge] << '\n';
+		// }
+		// cout << '\n';
 
 		// Min cut algorithm
 		list<node> cut;
@@ -686,7 +796,7 @@ int main(int argc, char **argv){
 			N_t.print_node(v);
 		cout << '\n';
 		
-		if(cut_value < k){
+		if(cut_value <= k){
 			FlowMap_NODE_label[NODE_front] = p;
 		}
 		else{
