@@ -90,6 +90,24 @@ void topologicalSort(std::stack<std::string>& Stack, std::map<std::string, NODE>
     // cout << '\n';
 }
 
+int dfs(std::string node, std::map<std::string, bool>& visited, std::map<std::string, NODE>& mapping){
+    // mark every node as visited
+    visited[node] = true;
+  	
+  	if(mapping[node].InNODEs.size() == 0) return 1; // The bottom level set to 1
+
+  	int max_level = 0;
+    for(std::vector<std::string>::iterator it = mapping[node].InNODEs.begin(); it != mapping[node].InNODEs.end(); ++it){
+        // if the node is not visited
+        if (visited.count(*it) == 0) {
+            // call the dfs function
+            int this_level = dfs(*it, visited, mapping)+1;
+            if(this_level > max_level) max_level = this_level;
+        }
+    }
+    return max_level;
+}
+
 int main(int argc, char **argv){
 	// cout << "Total: " << argc << " arguments fed!\n";
 	// for(int i = 0; i < argc; i++){
@@ -871,14 +889,14 @@ int main(int argc, char **argv){
 		// cout << "-----------------------------------------------\n";
     }
 
-    for(std::map<std::string, std::vector<std::string> >::iterator it = t_KLUT_input_map.begin();
-    																it != t_KLUT_input_map.end(); ++it){
-    	cout << "Input signals for " << it->first << ": ";
-    	for(int i = 0; i < it->second.size(); ++i){
-    		cout << it->second[i] << ' ';
-    	}
-    	cout << "\n\n";
-    }
+    // for(std::map<std::string, std::vector<std::string> >::iterator it = t_KLUT_input_map.begin();
+    // 																it != t_KLUT_input_map.end(); ++it){
+    // 	cout << "Input signals for " << it->first << ": ";
+    // 	for(int i = 0; i < it->second.size(); ++i){
+    // 		cout << it->second[i] << ' ';
+    // 	}
+    // 	cout << "\n\n";
+    // }
 
     // FlowMap Mapping Phase
     // Build a map for searching PI NODEs
@@ -892,29 +910,55 @@ int main(int argc, char **argv){
     	mapping_phase_traversal_list.push(POs[i]);
     }
 
+    // New graph for final K-LUT covered graph
+    std::map<std::string, NODE> final_graph_mapping;
+
     int LUT_count = 0; // Count LUT number
     while(!mapping_phase_traversal_list.empty()){
     	std::string node_v = mapping_phase_traversal_list.front();
     	mapping_phase_traversal_list.pop();
     	LUT_count++;
 
+    	// New NODE
+    	NODE NODE_v;
+    	NODE_v.NODE_name = node_v;
+    	NODE_v.NODE_level = 0;
+
     	if(t_KLUT_input_map[node_v].size() == 1 && t_KLUT_input_map[node_v][0] == node_v){
     		// If the cut contain only one node, add that node's input NODEs into the list
     		for(int i = 0; i < NODES_map[node_v].InNODEs.size(); ++i){
-    			if(PIs_mapping.count(NODES_map[node_v].InNODEs[i]) == 0) // Input NODE is not in PIs
+    			if(PIs_mapping.count(NODES_map[node_v].InNODEs[i]) == 0){ // Input NODE is not in PIs
     				mapping_phase_traversal_list.push(NODES_map[node_v].InNODEs[i]);
+    				NODE_v.InNODEs.push_back(NODES_map[node_v].InNODEs[i]);
+    			}
     		}
     	}
     	else{
     		// t_KLUT_input_map[node_v] has the input nodes for the cut
     		for(int i = 0; i < t_KLUT_input_map[node_v].size(); ++i){
-    			if(PIs_mapping.count(t_KLUT_input_map[node_v][i]) == 0) // Input NODE is not in PIs
+    			if(PIs_mapping.count(t_KLUT_input_map[node_v][i]) == 0){ // Input NODE is not in PIs
     				mapping_phase_traversal_list.push(t_KLUT_input_map[node_v][i]);
+    				NODE_v.InNODEs.push_back(t_KLUT_input_map[node_v][i]);
+    			}
     		}
     	}
+
+    	final_graph_mapping[node_v] = NODE_v;
     }
 
-    cout << "The circuit level is " << ".\n";
+    // DFS from PO to get the level of final graph
+    std::map<std::string, bool> visited;
+    int circuit_level = 0;
+    for(int i = 0; i < POs.size(); ++i){
+    	int level = dfs(POs[i], visited, final_graph_mapping);
+    	if(level > circuit_level) circuit_level = level;
+    }
+    
+ //    for(std::map<std::string, NODE>::iterator it = final_graph_mapping.begin(); it != final_graph_mapping.end(); ++it){
+	// 	cout << "Index: " << it->first << " -> NODE: " << it->second.NODE_name << '\n';
+	// }
+
+    cout << "The circuit level is " << circuit_level << ".\n";
     cout << "The number of LUTs is " << LUT_count << ".\n";
 
 	// // BFS Traversal to go through the graph in topological order
