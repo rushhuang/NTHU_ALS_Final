@@ -102,7 +102,7 @@ int main(int argc, char **argv){
 	ASSERT(!iss.fail(), "Input k should be given!\nPlease follow the format below:\n./map -k 4 map01.blif output.blif");
 	char* input_file_name = argv[3];
 	char* output_file_name = argv[4];
-	cout << "k: " << k << ", input file name: " << input_file_name << ", output file name: " << output_file_name << '\n';
+	// cout << "k: " << k << ", input file name: " << input_file_name << ", output file name: " << output_file_name << '\n';
 
 	// Read in input file
 	ifstream infile(input_file_name);
@@ -135,7 +135,7 @@ int main(int argc, char **argv){
 	
 	// getline(infile, primary_input_raw);
 	// getline(infile, primary_output_raw);
-	cout << "Model name: " << model_name_raw << ", PI: " << primary_input_raw << ", PO: " << primary_output_raw << "\n";
+	// cout << "Model name: " << model_name_raw << ", PI: " << primary_input_raw << ", PO: " << primary_output_raw << "\n";
 
 	// +1 for skipping white space of the delimiter
 	std::string model_name = model_name_raw.substr(model_name_raw.find(delimiter,0)+1);
@@ -459,9 +459,9 @@ int main(int argc, char **argv){
     outblif << primary_input_raw << '\n';
     outblif << primary_output_raw << '\n';
 
-    cout << model_name_raw << '\n';
-    cout << primary_input_raw << '\n';
-    cout << primary_output_raw << '\n';
+    // cout << model_name_raw << '\n';
+    // cout << primary_input_raw << '\n';
+    // cout << primary_output_raw << '\n';
 
     std::queue<std::string> Output_traversal;
     std::map<std::string, bool> Output_visited_NODEs;
@@ -484,31 +484,31 @@ int main(int argc, char **argv){
     	if(NODES_map[this_node].NODE_type == "0") continue; // PI does not need to be printed as .names
 
 		outblif << ".names ";
-		cout << ".names ";
+		// cout << ".names ";
     	for(int i = 0; i < NODES_map[this_node].InNODEs.size(); ++i){
     		// Only the unvisited NODEs need to be put in the queue
     		if(Output_visited_NODEs.count(NODES_map[this_node].InNODEs[i]) == 0)
     			Output_traversal.push(NODES_map[this_node].InNODEs[i]);
 
     		outblif << NODES_map[this_node].InNODEs[i] << ' ';
-    		cout << NODES_map[this_node].InNODEs[i] << ' ';
+    		// cout << NODES_map[this_node].InNODEs[i] << ' ';
     	}
     	outblif << this_node << '\n';
-    	cout << this_node << '\n';
+    	// cout << this_node << '\n';
 
     	if(NODES_map[this_node].NODE_type == "1"){
     		// cout << "AND";
     		// For input NODEs
     		for(int i = 0; i < NODES_map[this_node].InNODEs.size(); ++i){
     			outblif << "1";
-    			cout << "1";
+    			// cout << "1";
     		}
     		outblif << ' ';
-    		cout << ' ';
+    		// cout << ' ';
 
     		// For gate NODE
     		outblif << "1\n";
-    		cout << "1\n";
+    		// cout << "1\n";
     	}
 		else if(NODES_map[this_node].NODE_type == "2"){
 			// cout << "OR";
@@ -517,22 +517,22 @@ int main(int argc, char **argv){
 				for(int j = 0; j < NODES_map[this_node].InNODEs.size(); ++j){
 					if(i == j){
 						outblif << "1";
-						cout << "1";
+						// cout << "1";
 					}
 					else{
 						outblif << "-";
-						cout << "-";
+						// cout << "-";
 					}
 				}
 				// For output NODEs
 				outblif << " 1\n";
-				cout << " 1\n";
+				// cout << " 1\n";
 			}
 		}
 		else if(NODES_map[this_node].NODE_type == "3"){
 			// cout << "INVERTER";
 			outblif << "0 1\n";
-			cout << "0 1\n";
+			// cout << "0 1\n";
 		}
 		else if(NODES_map[this_node].NODE_type == "4"){
 			// cout << "CONSTANT_0";
@@ -541,21 +541,21 @@ int main(int argc, char **argv){
 		else if(NODES_map[this_node].NODE_type == "5"){
 			// cout << "CONSTANT_1";
 			outblif << "1\n";
-			cout << "1\n";
+			// cout << "1\n";
 		}
 		else if(NODES_map[this_node].NODE_type == "6"){
 			// cout << "BUFFER";
 			outblif << "1 1\n";
-			cout << "1 1\n";
+			// cout << "1 1\n";
 		}
 		else if(NODES_map[this_node].NODE_type == "7"){
-			cout << "UNKNOWN\n";
+			// cout << "UNKNOWN\n";
 		}
     }
 
 
     outblif << ".end";
-    cout << ".end\n";
+    // cout << ".end\n";
     outblif.close();
 
     return 0;
