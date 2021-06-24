@@ -558,6 +558,8 @@ int main(int argc, char **argv){
 	    outblif << ".end";
 	    // cout << ".end\n";
 	    outblif.close();
+
+	    return 0;
 	}
 
     // Get the topological order for newly decomposed newwork
@@ -877,6 +879,43 @@ int main(int argc, char **argv){
     	}
     	cout << "\n\n";
     }
+
+    // FlowMap Mapping Phase
+    // Build a map for searching PI NODEs
+    std::map<std::string, bool> PIs_mapping;
+    for(int i = 0; i < PIs.size(); ++i){
+    	PIs_mapping[PIs[i]] = true;
+    }
+
+    std::queue<std::string> mapping_phase_traversal_list;
+    for(int i = 0; i < POs.size(); ++i){
+    	mapping_phase_traversal_list.push(POs[i]);
+    }
+
+    int LUT_count = 0; // Count LUT number
+    while(!mapping_phase_traversal_list.empty()){
+    	std::string node_v = mapping_phase_traversal_list.front();
+    	mapping_phase_traversal_list.pop();
+    	LUT_count++;
+
+    	if(t_KLUT_input_map[node_v].size() == 1 && t_KLUT_input_map[node_v][0] == node_v){
+    		// If the cut contain only one node, add that node's input NODEs into the list
+    		for(int i = 0; i < NODES_map[node_v].InNODEs.size(); ++i){
+    			if(PIs_mapping.count(NODES_map[node_v].InNODEs[i]) == 0) // Input NODE is not in PIs
+    				mapping_phase_traversal_list.push(NODES_map[node_v].InNODEs[i]);
+    		}
+    	}
+    	else{
+    		// t_KLUT_input_map[node_v] has the input nodes for the cut
+    		for(int i = 0; i < t_KLUT_input_map[node_v].size(); ++i){
+    			if(PIs_mapping.count(t_KLUT_input_map[node_v][i]) == 0) // Input NODE is not in PIs
+    				mapping_phase_traversal_list.push(t_KLUT_input_map[node_v][i]);
+    		}
+    	}
+    }
+
+    cout << "The circuit level is " << ".\n";
+    cout << "The number of LUTs is " << LUT_count << ".\n";
 
 	// // BFS Traversal to go through the graph in topological order
 	// int BFS_count = 0; // To check how many unique nodes that are traversed
