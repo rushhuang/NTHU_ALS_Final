@@ -16,6 +16,7 @@ using namespace std;
 #include <LEDA/core/list.h>
 #include <LEDA/graph/graph.h>
 #include <LEDA/graph/min_cut.h>
+#include <LEDA/graph/max_flow.h>
 #include <LEDA/graph/min_cost_flow.h>
 using namespace leda;
 
@@ -558,8 +559,6 @@ int main(int argc, char **argv){
     // cout << ".end\n";
     outblif.close();
 
-    return 0;
-
     // Get the topological order for newly decomposed newwork
     std::stack<std::string> FlowMap_cut_Stack;
 	topologicalSort(FlowMap_cut_Stack, NODES_map, Total_NODES);
@@ -591,6 +590,7 @@ int main(int argc, char **argv){
 		edge tmp_edge;
 		std::queue<std::string> N_t_traversal; // For BFS traversal
 		std::map<std::string, node> N_t_node_mapping; // Recording N_t nodes
+		std::map<node, std::string> Rev_N_t_node_mapping; // Reverse N_t nodes mapping, which use ndoe as key
 
 		// Create node t and map it with its name
 		node t = N_t.new_node();
@@ -699,12 +699,10 @@ int main(int argc, char **argv){
 			}
 		}
 
-		// cout << "\nNode name -> [node number]:\n";
-		// for(std::map<std::string, node>::iterator iter = N_t_node_mapping.begin(); iter != N_t_node_mapping.end(); ++iter){
-		// 	cout << iter->first << " -> ";
-		// 	N_t.print_node(iter->second);
-		// 	cout << '\n';
-		// }
+		// Build reverse N_t node mapping using current nodes
+		for(std::map<std::string, node>::iterator iter = N_t_node_mapping.begin(); iter != N_t_node_mapping.end(); ++iter){
+			Rev_N_t_node_mapping[iter->second] = iter->first;
+		}
 
 		// cout << "\nCollapsed network:\n";
 		// cout << "\tNodes: ";
@@ -747,6 +745,13 @@ int main(int argc, char **argv){
 			// cout << " now...\n";
 
 			node node_dup = N_t.new_node();
+			std::string node_dup_name = Rev_N_t_node_mapping[current_total_node_list[i]] + "_dup";
+			Rev_N_t_node_mapping[node_dup] = node_dup_name;
+
+			// cout << Rev_N_t_node_mapping[current_total_node_list[i]] << " is now splitting into ";
+			// cout << node_dup_name << " and ";
+			// cout << Rev_N_t_node_mapping[current_total_node_list[i]] << '\n';
+
 
 			// Link the input nodes of original node to duplicated node
 			list<edge> input_edges = N_t.in_edges(current_total_node_list[i]);
@@ -785,9 +790,24 @@ int main(int argc, char **argv){
 		// }
 		// cout << '\n';
 
-		// Min cut algorithm
+		// Min cut algorithm (using max flow to achieve min cut)
+		// list<node> cut;
+		// int cut_value = MIN_CUT(N_t, weight, cut);
+		// Since MIN_CUT in LEDA is just a cut with minimum weights and it does not guarantee the cut separates s from t
+		edge_array<int> flow(N_t);
 		list<node> cut;
-		int cut_value = MIN_CUT(N_t, weight, cut);
+		int cut_value = MAX_FLOW(N_t, sink_node, t_prime, weight, flow, cut);
+
+		cout << "****************************************\n";
+		cout << "*  Nodes to Name Mapping Table\n";
+		for(std::map<node, std::string>::iterator iter = Rev_N_t_node_mapping.begin();
+													iter != Rev_N_t_node_mapping.end(); ++iter){
+			cout << "*     " << iter->second << " -> ";
+			N_t.print_node(iter->first);
+			cout << '\n';
+		}
+		cout << "****************************************\n";
+
 
 		cout << "The minimum cut has value: " << cut_value << '\n';
 		cout << "cut:";
