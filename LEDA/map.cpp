@@ -615,7 +615,8 @@ int main(int argc, char **argv){
 		graph N_t;
 		node tmp_node;
 		edge tmp_edge;
-		std::queue<std::string> N_t_traversal; // For BFS traversal
+		std::stack<std::string> N_t_traversal; // For DFS traversal
+		std::map<std::string, bool> visited_N_t_traversal;
 		std::map<std::string, node> N_t_node_mapping; // Recording N_t nodes
 		std::map<node, std::string> Rev_N_t_node_mapping; // Reverse N_t nodes mapping, which use ndoe as key
 
@@ -623,28 +624,32 @@ int main(int argc, char **argv){
 		node t = N_t.new_node();
 		N_t_node_mapping[NODE_front] = t;
 
-		// Set the front NODE as BFS traversal root
+		// Set the front NODE as DFS traversal root
 		N_t_traversal.push(NODE_front);
 
 		// Subnetwork N_t construction
 		while(!N_t_traversal.empty()){
-			std::string predecessor = N_t_traversal.front();
+			std::string predecessor = N_t_traversal.top();
 			N_t_traversal.pop();
+			visited_N_t_traversal[predecessor] = true;
 
 			// Build edges to connect this node with all its descendant
 			for(int i = 0; i < NODES_map[predecessor].InNODEs.size(); ++i){
-				N_t_traversal.push(NODES_map[predecessor].InNODEs[i]);
+				if(visited_N_t_traversal.count(NODES_map[predecessor].InNODEs[i]) == 0){
+					// If this input NODE has not been visited
+					N_t_traversal.push(NODES_map[predecessor].InNODEs[i]);
 
-				if(N_t_node_mapping.count(NODES_map[predecessor].InNODEs[i]) == 0){
-					// Create a new node for predecessor's input node that has not been created
-					tmp_node = N_t.new_node();
-					// Map the new node with its name
-					N_t_node_mapping[NODES_map[predecessor].InNODEs[i]] = tmp_node;
+					if(N_t_node_mapping.count(NODES_map[predecessor].InNODEs[i]) == 0){
+						// Create a new node for predecessor's input node that has not been created
+						tmp_node = N_t.new_node();
+						// Map the new node with its name
+						N_t_node_mapping[NODES_map[predecessor].InNODEs[i]] = tmp_node;
+					}
+
+					// Create a edge to connect the new input node and predecessor node
+					tmp_edge = N_t.new_edge(N_t_node_mapping[NODES_map[predecessor].InNODEs[i]], N_t_node_mapping[predecessor]);
+					// cout << NODES_map[predecessor].InNODEs[i] << " -> " << predecessor << '\n';
 				}
-
-				// Create a edge to connect the new input node and predecessor node
-				tmp_edge = N_t.new_edge(N_t_node_mapping[NODES_map[predecessor].InNODEs[i]], N_t_node_mapping[predecessor]);
-				// cout << NODES_map[predecessor].InNODEs[i] << " -> " << predecessor << '\n';
 			}
 		}
 
