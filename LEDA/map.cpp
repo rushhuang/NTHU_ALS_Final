@@ -11,6 +11,8 @@
 #include <stack>
 #include <climits> // INT_MAX
 #include <algorithm> // std::remove
+#include <cmath> // For pow()
+#include <bitset> // To generate test pattern
 using namespace std;
 
 #include <LEDA/core/list.h>
@@ -106,6 +108,55 @@ int dfs(std::string node, std::map<std::string, bool>& visited, std::map<std::st
         }
     }
     return max_level;
+}
+
+int k2dfs(std::string node, std::map<std::string, bool>& visited, std::map<std::string, NODE>& mapping){
+    // mark every node as visited
+    visited[node] = true;
+  	
+  	if(mapping[node].InNODEs.size() == 0) return 0; // The bottom level set to 0
+
+  	int max_level = 0;
+    for(std::vector<std::string>::iterator it = mapping[node].InNODEs.begin(); it != mapping[node].InNODEs.end(); ++it){
+        // if the node is not visited
+        if (visited.count(*it) == 0) {
+            // call the dfs function
+            int this_level = k2dfs(*it, visited, mapping)+1;
+            if(this_level > max_level) max_level = this_level;
+        }
+    }
+    return max_level;
+}
+
+int klutdfs(std::string node, std::map<std::string, bool>& visited, std::string test_pattern,
+			std::vector<std::string>& input_signals, std::map<std::string, NODE>& mapping){
+    // mark every node as visited
+    visited[node] = true;
+  	int signal;
+
+  	// Check if this node is input signal
+  	for(int i = 0; i < input_signals.size(); ++i){
+  		if(input_signals[i] == node){
+			istringstream iss( std::string(1,test_pattern[i]) ); // Convert char to string first
+			iss >> signal;
+  			return signal; // Set this input as its test_pattern signal
+  		}
+  	}
+
+    for(std::vector<std::string>::iterator it = mapping[node].InNODEs.begin(); it != mapping[node].InNODEs.end(); ++it){
+        // if the node is not visited
+        if (visited.count(*it) == 0) {
+        	if(mapping[node].NODE_type == "1"){ // If this node is AND
+        		signal = 1; // Set initial value to non-controlling value of AND
+        		signal = signal & klutdfs(*it, visited, test_pattern, input_signals, mapping);
+        	}
+        	else if(mapping[node].NODE_type == "2"){ // If this node is OR
+        		signal = 0; // Set initial value to non-controlling value of OR
+        		signal = signal | klutdfs(*it, visited, test_pattern, input_signals, mapping);
+        	}
+        }
+    }
+    return signal;
 }
 
 int main(int argc, char **argv){
@@ -474,114 +525,130 @@ int main(int argc, char **argv){
 		}
     }
 
-    if(k == 2){ // 2-LUT mapping is equivalent to network decomposition
-    	cout << "\rOutputing..." << std::flush;
+     // 2-LUT mapping is equivalent to network decomposition
+    cout << "\rOutputing..." << std::flush;
+    int LUT_count = 0;
 
-	    // Output blif file
-	    ofstream outblif;
-	    outblif.open(output_file_name);
+	// Output blif file
+	ofstream outblif;
+	outblif.open(output_file_name);
 
-	    outblif << model_name_raw << '\n';
-	    outblif << primary_input_raw << '\n';
-	    outblif << primary_output_raw << '\n';
+	outblif << model_name_raw << '\n';
+	outblif << primary_input_raw << '\n';
+	outblif << primary_output_raw << '\n';
 
-	    // cout << model_name_raw << '\n';
-	    // cout << primary_input_raw << '\n';
-	    // cout << primary_output_raw << '\n';
+	// cout << model_name_raw << '\n';
+	// cout << primary_input_raw << '\n';
+	// cout << primary_output_raw << '\n';
 
-	    std::queue<std::string> Output_traversal;
-	    std::map<std::string, bool> Output_visited_NODEs;
-	    // cout << "PO: ";
-	    for(int i = 0; i < POs.size(); ++i){
-	    	Output_traversal.push(POs[i]);
-	    	// cout << POs[i] << ' ';
+	std::queue<std::string> Output_traversal;
+	std::map<std::string, bool> Output_visited_NODEs;
+	// cout << "PO: ";
+	for(int i = 0; i < POs.size(); ++i){
+		Output_traversal.push(POs[i]);
+		// cout << POs[i] << ' ';
+	}
+	// cout << '\n';
+
+	while(!Output_traversal.empty()){
+		std::string this_node = Output_traversal.front();
+		Output_traversal.pop();
+
+		// Skip NODEs that have been added multiple times before it is really traversed
+		if(Output_visited_NODEs.count(this_node) != 0) continue;
+
+		Output_visited_NODEs[this_node] = true;
+
+		if(NODES_map[this_node].NODE_type == "0") continue; // PI does not need to be printed as .names
+
+		outblif << ".names ";
+		LUT_count++;
+		// cout << ".names ";
+		for(int i = 0; i < NODES_map[this_node].InNODEs.size(); ++i){
+			// Only the unvisited NODEs need to be put in the queue
+			if(Output_visited_NODEs.count(NODES_map[this_node].InNODEs[i]) == 0)
+				Output_traversal.push(NODES_map[this_node].InNODEs[i]);
+
+			outblif << NODES_map[this_node].InNODEs[i] << ' ';
+			// cout << NODES_map[this_node].InNODEs[i] << ' ';
+		}
+		outblif << this_node << '\n';
+		// cout << this_node << '\n';
+
+		if(NODES_map[this_node].NODE_type == "1"){
+			// cout << "AND";
+			// For input NODEs
+			for(int i = 0; i < NODES_map[this_node].InNODEs.size(); ++i){
+				outblif << "1";
+				// cout << "1";
+			}
+			outblif << ' ';
+			// cout << ' ';
+
+			// For gate NODE
+			outblif << "1\n";
+			// cout << "1\n";
 	    }
-	    // cout << '\n';
-
-	    while(!Output_traversal.empty()){
-	    	std::string this_node = Output_traversal.front();
-	    	Output_traversal.pop();
-
-	    	// Skip NODEs that have been added multiple times before it is really traversed
-	    	if(Output_visited_NODEs.count(this_node) != 0) continue;
-
-	    	Output_visited_NODEs[this_node] = true;
-
-	    	if(NODES_map[this_node].NODE_type == "0") continue; // PI does not need to be printed as .names
-
-			outblif << ".names ";
-			// cout << ".names ";
-	    	for(int i = 0; i < NODES_map[this_node].InNODEs.size(); ++i){
-	    		// Only the unvisited NODEs need to be put in the queue
-	    		if(Output_visited_NODEs.count(NODES_map[this_node].InNODEs[i]) == 0)
-	    			Output_traversal.push(NODES_map[this_node].InNODEs[i]);
-
-	    		outblif << NODES_map[this_node].InNODEs[i] << ' ';
-	    		// cout << NODES_map[this_node].InNODEs[i] << ' ';
-	    	}
-	    	outblif << this_node << '\n';
-	    	// cout << this_node << '\n';
-
-	    	if(NODES_map[this_node].NODE_type == "1"){
-	    		// cout << "AND";
-	    		// For input NODEs
-	    		for(int i = 0; i < NODES_map[this_node].InNODEs.size(); ++i){
-	    			outblif << "1";
-	    			// cout << "1";
-	    		}
-	    		outblif << ' ';
-	    		// cout << ' ';
-
-	    		// For gate NODE
-	    		outblif << "1\n";
-	    		// cout << "1\n";
-	    	}
-			else if(NODES_map[this_node].NODE_type == "2"){
-				// cout << "OR";
-				for(int i = 0; i < NODES_map[this_node].InNODEs.size(); ++i){
-					// For input NODEs
-					for(int j = 0; j < NODES_map[this_node].InNODEs.size(); ++j){
-						if(i == j){
-							outblif << "1";
-							// cout << "1";
-						}
-						else{
-							outblif << "-";
-							// cout << "-";
-						}
+		else if(NODES_map[this_node].NODE_type == "2"){
+			// cout << "OR";
+			for(int i = 0; i < NODES_map[this_node].InNODEs.size(); ++i){
+				// For input NODEs
+				for(int j = 0; j < NODES_map[this_node].InNODEs.size(); ++j){
+					if(i == j){
+						outblif << "1";
+						// cout << "1";
 					}
-					// For output NODEs
-					outblif << " 1\n";
-					// cout << " 1\n";
+					else{
+						outblif << "-";
+						// cout << "-";
+					}
 				}
+				// For output NODEs
+				outblif << " 1\n";
+				// cout << " 1\n";
 			}
-			else if(NODES_map[this_node].NODE_type == "3"){
-				// cout << "INVERTER";
-				outblif << "0 1\n";
-				// cout << "0 1\n";
-			}
-			else if(NODES_map[this_node].NODE_type == "4"){
-				// cout << "CONSTANT_0";
-				continue;
-			}
-			else if(NODES_map[this_node].NODE_type == "5"){
-				// cout << "CONSTANT_1";
-				outblif << "1\n";
-				// cout << "1\n";
-			}
-			else if(NODES_map[this_node].NODE_type == "6"){
-				// cout << "BUFFER";
-				outblif << "1 1\n";
-				// cout << "1 1\n";
-			}
-			else if(NODES_map[this_node].NODE_type == "7"){
-				// cout << "UNKNOWN\n";
-			}
-	    }
+		}
+		else if(NODES_map[this_node].NODE_type == "3"){
+			// cout << "INVERTER";
+			outblif << "0 1\n";
+			// cout << "0 1\n";
+		}
+		else if(NODES_map[this_node].NODE_type == "4"){
+			// cout << "CONSTANT_0";
+			continue;
+		}
+		else if(NODES_map[this_node].NODE_type == "5"){
+			// cout << "CONSTANT_1";
+			outblif << "1\n";
+			// cout << "1\n";
+		}
+		else if(NODES_map[this_node].NODE_type == "6"){
+			// cout << "BUFFER";
+			outblif << "1 1\n";
+			// cout << "1 1\n";
+		}
+		else if(NODES_map[this_node].NODE_type == "7"){
+			// cout << "UNKNOWN\n";
+		}
+	}
 
-	    outblif << ".end";
-	    // cout << ".end\n";
-	    outblif.close();
+	outblif << ".end";
+	// cout << ".end\n";
+	outblif.close();
+
+	if(k == 2){
+	    // DFS from PO to get the level of final graph
+    	std::map<std::string, bool> visited;
+    	int circuit_level = 0;
+    	for(int i = 0; i < POs.size(); ++i){
+    		int level = k2dfs(POs[i], visited, NODES_map);
+    		if(level > circuit_level) circuit_level = level;
+    	}
+
+	    cout << "\rThe circuit level is " << circuit_level << ".\n";
+    	cout << "The number of LUTs is " << LUT_count << ".\n";
+
+    	return 0;
 	}
 
 	cout << "\rFlowMap......" << std::flush;
@@ -900,7 +967,8 @@ int main(int argc, char **argv){
 		// cout << "-----------------------------------------------\n";
     }
 
-    cout << "\rK-LUT......." << std::flush;
+    // cout << "\rK-LUT......." << std::flush;
+    cout << "\rK-LUT.......\n";
 
     // for(std::map<std::string, std::vector<std::string> >::iterator it = t_KLUT_input_map.begin();
     // 																it != t_KLUT_input_map.end(); ++it){
@@ -927,8 +995,18 @@ int main(int argc, char **argv){
     std::map<std::string, NODE> final_graph_mapping;
     std::map<std::string, bool> visited_input_nodes_mapping;
 
+	outblif.open(output_file_name);
+
+	outblif << model_name_raw << '\n';
+	outblif << primary_input_raw << '\n';
+	outblif << primary_output_raw << '\n';
+
+    cout << model_name_raw << '\n';
+	cout << primary_input_raw << '\n';
+	cout << primary_output_raw << '\n';
+
     // cout << "LUT output signals: ";
-    int LUT_count = 0; // Count LUT number
+    LUT_count = 0; // Count LUT number
     while(!mapping_phase_traversal_list.empty()){
     	std::string node_v = mapping_phase_traversal_list.top();
     	mapping_phase_traversal_list.pop();
@@ -941,6 +1019,8 @@ int main(int argc, char **argv){
     	NODE_v.NODE_name = node_v;
     	NODE_v.NODE_level = 0;
 
+    	outblif << ".names ";
+    	cout << ".names ";
     	if(t_KLUT_input_map[node_v].size() == 1 && t_KLUT_input_map[node_v][0] == node_v){
     		// If the cut contain only one node, add that node's input NODEs into the list
     		for(int i = 0; i < NODES_map[node_v].InNODEs.size(); ++i){
@@ -950,7 +1030,47 @@ int main(int argc, char **argv){
     					NODE_v.InNODEs.push_back(NODES_map[node_v].InNODEs[i]);
     				}
     			}
+    			outblif << NODES_map[node_v].InNODEs[i] << ' ';
+    			cout << NODES_map[node_v].InNODEs[i] << ' ';
     		}
+    		outblif << node_v << ' ';
+    		cout << node_v << '\n';
+    		if(NODES_map[node_v].NODE_type == "1"){
+				// cout << "AND";
+			
+				outblif << "11 1\n";
+				cout << "11 1\n";
+	    	}
+			else if(NODES_map[node_v].NODE_type == "2"){
+				// cout << "OR";
+				
+				outblif << "1- 1\n";
+				outblif << "-1 1\n";
+				cout << "1- 1\n";
+				cout << "-1 1\n";
+			}
+			else if(NODES_map[node_v].NODE_type == "3"){
+				// cout << "INVERTER";
+				outblif << "0 1\n";
+				cout << "0 1\n";
+			}
+			else if(NODES_map[node_v].NODE_type == "4"){
+				// cout << "CONSTANT_0";
+				continue;
+			}
+			else if(NODES_map[node_v].NODE_type == "5"){
+				// cout << "CONSTANT_1";
+				outblif << "1\n";
+				cout << "1\n";
+			}
+			else if(NODES_map[node_v].NODE_type == "6"){
+				// cout << "BUFFER";
+				outblif << "1 1\n";
+				cout << "1 1\n";
+			}
+			else if(NODES_map[node_v].NODE_type == "7"){
+				// cout << "UNKNOWN\n";
+			}
     	}
     	else{
     		// t_KLUT_input_map[node_v] has the input nodes for the cut
@@ -961,12 +1081,40 @@ int main(int argc, char **argv){
     					NODE_v.InNODEs.push_back(t_KLUT_input_map[node_v][i]);
     				}
     			}
+    			outblif << t_KLUT_input_map[node_v][i] << ' ';
+    			cout << t_KLUT_input_map[node_v][i] << ' ';
+    		}
+    		outblif << node_v << '\n';
+    		cout << node_v << '\n';
+
+    		std::map<std::string, bool> klut_visited;
+    		std::bitset<6> test_pattern_bit;
+    		std::string test_pattern;
+    		int output_signal;
+    		std::vector<std::string> test_pattern_to_1;
+    		for(int i = 0; i < std::pow(2,t_KLUT_input_map[node_v].size()); ++i){
+    			klut_visited.clear(); // Clear the visited map every round
+    			// test_pattern generation
+    			test_pattern_bit = i;
+    			test_pattern = test_pattern_bit.to_string();
+    			test_pattern = test_pattern.substr(test_pattern.size() - t_KLUT_input_map[node_v].size());
+    			// cout << test_pattern << ' ';
+
+    			output_signal = klutdfs(node_v, klut_visited, test_pattern, t_KLUT_input_map[node_v], NODES_map);
+    			// cout << output_signal << '\n';
+    			if(output_signal == 1) test_pattern_to_1.push_back(test_pattern);
+    		}
+    		for(int i = 0; i < test_pattern_to_1.size(); ++i){
+    			outblif << test_pattern_to_1[i] << " 1\n";
+    			cout << test_pattern_to_1[i] << " 1\n";
     		}
     	}
 
     	final_graph_mapping[node_v] = NODE_v;
     }
-    // cout << '\n';
+    outblif << ".end";
+	cout << ".end\n";
+	outblif.close();
 
     // DFS from PO to get the level of final graph
     std::map<std::string, bool> visited;
@@ -980,178 +1128,8 @@ int main(int argc, char **argv){
 	// 	cout << "Index: " << it->first << " -> NODE: " << it->second.NODE_name << '\n';
 	// }
 
-    cout << "\rThe circuit level is " << circuit_level << ".\n";
+    cout << "The circuit level is " << circuit_level << ".\n";
     cout << "The number of LUTs is " << LUT_count << ".\n";
-
-	// // BFS Traversal to go through the graph in topological order
-	// int BFS_count = 0; // To check how many unique nodes that are traversed
-	// std::queue<std::string> NODE_queue;
-	// // Starting BFS from BFS_seed list
-	// for(std::vector<std::string>::const_iterator it = BFS_seed.begin(); it != BFS_seed.end(); ++it){
-	// 	NODE_queue.push(*it);
-	// 	BFS_count++;
-	// }
-
-	// while(!NODE_queue.empty()){
-	// 	std::string NODE_front = NODE_queue.front();
-	// 	NODE_queue.pop();
-
-	// 	// Add output NODEs into the queue
-	// 	for(int i = 0; i < NODES_map[NODE_front].OutNODEs.size(); ++i){
-	// 		bool add_output_list = true;
-	// 		for(int j = 0; j < NODES_map[NODES_map[NODE_front].OutNODEs[i]].InNODEs.size(); ++j){
-	// 			// Check if output NODE's input NODEs have complete level info: for topological order with BFS
-	// 			if(NODES_map[NODES_map[NODES_map[NODE_front].OutNODEs[i]].InNODEs[j]].NODE_level == -1){
-	// 				add_output_list = false;
-	// 				break;
-	// 			}
-	// 		}
-	// 		if(add_output_list){ // Add the output NODE only if its input NODEs have complete level info.
-	// 			NODE_queue.push(NODES_map[NODE_front].OutNODEs[i]);
-	// 		}
-	// 		else{ // Add the front NODE back to the queue for later ouput NODEs traversal
-	// 			NODE_queue.push(NODE_front);
-	// 		}
-	// 	}
-
-	// 	// Update NODE level for level undecided NODE
-	// 	if(NODES_map[NODE_front].NODE_level == -1){
-	// 		BFS_count++;
-
-	// 		// Breaking down the nodes with more than two inputs
-	// 		while(NODES_map[NODE_front].InNODEs.size() > 2){
-	// 			int smallest = INT_MAX;
-	// 			int small_second = INT_MAX;
-	// 			int smallest_idx = -1;
-	// 			int small_second_idx = -1;
-	// 			NODE tmp_node;
-	// 			NODE smallest_NODE;
-	// 			NODE small_second_NODE;
-
-	// 			// For new NODE name
-	// 			stringstream i2s;
-	// 			i2s << NODES_map.size();
-	// 			std::string new_name = i2s.str();
-
-	// 			// Find the smallest two
-	// 			for(int k = 0; k < NODES_map[NODE_front].InNODEs.size(); ++k){
-	// 				if(NODES_map[NODES_map[NODE_front].InNODEs[k]].NODE_level < smallest){
-	// 					if(smallest != small_second){
-	// 						small_second = smallest;
-	// 						small_second_idx = smallest_idx;
-	// 					}
-	// 					smallest = NODES_map[NODES_map[NODE_front].InNODEs[k]].NODE_level;
-	// 					smallest_idx = k;
-	// 				}
-	// 				else{
-	// 					if(NODES_map[NODES_map[NODE_front].InNODEs[k]].NODE_level != smallest || smallest != small_second){
-	// 						if(NODES_map[NODES_map[NODE_front].InNODEs[k]].NODE_level < small_second){
-	// 							small_second = NODES_map[NODES_map[NODE_front].InNODEs[k]].NODE_level;
-	// 							small_second_idx = k;
-	// 						}
-	// 					}
-	// 				}
-	// 			}
-				
-	// 			// Create a new NODE
-	// 			new_name = "[" + new_name + "]";
-	// 			tmp_node.NODE_name = new_name;
-	// 			// Copy the original gate type to new NODE
-	// 			tmp_node.NODE_type = NODES_map[NODE_front].NODE_type;
-	// 			// Add the smallest two NODES into new NODE's input NODE list
-	// 			tmp_node.InNODEs.push_back(NODES_map[NODE_front].InNODEs[smallest_idx]);
-	// 			tmp_node.InNODEs.push_back(NODES_map[NODE_front].InNODEs[small_second_idx]);
-	// 			// Add the gate NODE into new NODE's output NODE list
-	// 			tmp_node.OutNODEs.push_back(NODE_front);
-
-	// 			smallest_NODE = NODES_map[NODES_map[NODE_front].InNODEs[smallest_idx]];
-	// 			small_second_NODE = NODES_map[NODES_map[NODE_front].InNODEs[small_second_idx]];
-
-	// 			// Use the max level of the two input NODES +1 as the level of new NODE
-	// 			tmp_node.NODE_level = ((smallest_NODE.NODE_level > small_second_NODE.NODE_level) ?
-	// 									smallest_NODE.NODE_level : small_second_NODE.NODE_level) + 1;
-
-	// 			// Delete gate NODE from the smallest two NODEs' output NODE list
-	// 			// CANNOT use new NODE variable (smallest_NODE, small_second_NODE) to adjust original output NODE lists
-	// 			NODES_map[NODES_map[NODE_front].InNODEs[smallest_idx]].OutNODEs.erase(
-	// 				std::remove(NODES_map[NODES_map[NODE_front].InNODEs[smallest_idx]].OutNODEs.begin(),
-	// 							NODES_map[NODES_map[NODE_front].InNODEs[smallest_idx]].OutNODEs.end(),
-	// 							NODE_front),
-	// 				NODES_map[NODES_map[NODE_front].InNODEs[smallest_idx]].OutNODEs.end());
-	// 			NODES_map[NODES_map[NODE_front].InNODEs[small_second_idx]].OutNODEs.erase(
-	// 				std::remove(NODES_map[NODES_map[NODE_front].InNODEs[small_second_idx]].OutNODEs.begin(),
-	// 							NODES_map[NODES_map[NODE_front].InNODEs[small_second_idx]].OutNODEs.end(),
-	// 							NODE_front),
-	// 				NODES_map[NODES_map[NODE_front].InNODEs[small_second_idx]].OutNODEs.end());
-
-	// 			// Add the new NODE to the smallest two NODEs' output NODE list
-	// 			NODES_map[NODES_map[NODE_front].InNODEs[smallest_idx]].OutNODEs.push_back(new_name);
-	// 			NODES_map[NODES_map[NODE_front].InNODEs[small_second_idx]].OutNODEs.push_back(new_name);
-
-	// 			// Delete the smallest two NODEs from gate NODE's input NODE list
-	// 			NODES_map[NODE_front].InNODEs.erase(NODES_map[NODE_front].InNODEs.begin() + smallest_idx);
-	// 			if(smallest_idx < small_second_idx){ // To prevent from mis-indexing caused by deleting from previous line
-	// 				NODES_map[NODE_front].InNODEs.erase(NODES_map[NODE_front].InNODEs.begin() + small_second_idx-1);
-	// 			}
-	// 			else{
-	// 				NODES_map[NODE_front].InNODEs.erase(NODES_map[NODE_front].InNODEs.begin() + small_second_idx);
-	// 			}
-
-	// 			// Add the new NODE to gate NODE input NODE list
-	// 			NODES_map[NODE_front].InNODEs.push_back(new_name);
-
-	// 			// PUT new NODE into total NODE list
-	// 			Total_NODES.push_back(tmp_node);
-		
-	// 			// Put new NODE into NODE map
-	// 			NODES_map[new_name] = tmp_node;
-	// 		}
-
-	// 		// Get the level for each node in BFS traversal without transform to two inputs graph
-	// 		int max_level = -1;
-	// 		for(int j = 0; j < NODES_map[NODE_front].InNODEs.size(); ++j){
-	// 			if(NODES_map[NODES_map[NODE_front].InNODEs[j]].NODE_level == -1){ // Input NODE's level info is not complete
-	// 				NODE_queue.push(NODE_front); // Re-add front NODE to BFS queue
-	// 				max_level = -2; // To make the front NODE's level be -1 after this round
-	// 				break;
-	// 			}
-	// 			if(NODES_map[NODES_map[NODE_front].InNODEs[j]].NODE_level > max_level){
-	// 				max_level = NODES_map[NODES_map[NODE_front].InNODEs[j]].NODE_level;
-	// 			}
-	// 		}
-	// 		NODES_map[NODE_front].NODE_level = max_level+1;
-	// 	}
-	// }
-
-	// To check how many unique nodes that are traversed
-	// cout << "BFS count: " << BFS_count << ", Total nodes count: " << NODES_map.size() << '\n';
-
-	// for(std::map<std::string, NODE>::iterator it = NODES_map.begin(); it != NODES_map.end(); ++it){
-	// 	cout << "Index: " << it->first << " -> NODE: (" << it->second.NODE_name << ", ";
-	// 	if(it->second.NODE_level == -1) cout << "Level: UNDECIDED, ";
-	// 	else cout << "Level: " << it->second.NODE_level << ", ";
-	// 	if(it->second.NODE_type == "1") cout << "AND";
-	// 	else if(it->second.NODE_type == "2") cout << "OR";
-	// 	else if(it->second.NODE_type == "3") cout << "INVERTER";
-	// 	else if(it->second.NODE_type == "4") cout << "CONSTANT_0";
-	// 	else if(it->second.NODE_type == "5") cout << "CONSTANT_1";
-	// 	else if(it->second.NODE_type == "6") cout << "BUFFER";
-	// 	else if(it->second.NODE_type == "7") cout << "UNKNOWN";
-	// 	else cout << "PI/PO";
-	// 	cout << ")\n";
-	// 	cout << "Input NODEs (" << it->second.InNODEs.size() << "): \n";
-	// 	for(int i = 0; i < it->second.InNODEs.size(); ++i){
-	// 		cout << it->second.InNODEs[i] << ' ';
-	// 	}
-	// 	cout << '\n';
-
-	// 	cout << "Output NODEs (" << it->second.OutNODEs.size() << "): \n";
-	// 	for(int i = 0; i < it->second.OutNODEs.size(); ++i){
-	// 		cout << it->second.OutNODEs[i] << ' ';
-	// 	}
-	// 	cout << '\n';
-	// 	cout << "-----------------------------------------------\n";
-	// }
 
 	return 0;
 }
