@@ -913,7 +913,7 @@ int main(int argc, char **argv){
     	PIs_mapping[PIs[i]] = true;
     }
 
-    std::queue<std::string> mapping_phase_traversal_list;
+    std::stack<std::string> mapping_phase_traversal_list;
     for(int i = 0; i < POs.size(); ++i){
     	mapping_phase_traversal_list.push(POs[i]);
     }
@@ -925,7 +925,7 @@ int main(int argc, char **argv){
     // cout << "LUT output signals: ";
     int LUT_count = 0; // Count LUT number
     while(!mapping_phase_traversal_list.empty()){
-    	std::string node_v = mapping_phase_traversal_list.front();
+    	std::string node_v = mapping_phase_traversal_list.top();
     	mapping_phase_traversal_list.pop();
     	LUT_count++;
     	visited_input_nodes_mapping[node_v] = true;
