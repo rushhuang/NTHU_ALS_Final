@@ -123,6 +123,8 @@ int main(int argc, char **argv){
 	char* output_file_name = argv[4];
 	// cout << "k: " << k << ", input file name: " << input_file_name << ", output file name: " << output_file_name << '\n';
 
+	cout << "\rParsing inputs..." << std::flush;
+
 	// Read in input file
 	ifstream infile(input_file_name);
 
@@ -354,6 +356,8 @@ int main(int argc, char **argv){
 		names_raw = relations_raw;
 	}
 
+	cout << "\rDecomposing..." << std::flush;
+
 	// DFS stack for topological order
 	std::stack<std::string> Labeling_Stack;
 	topologicalSort(Labeling_Stack, NODES_map, Total_NODES);
@@ -471,6 +475,8 @@ int main(int argc, char **argv){
     }
 
     if(k == 2){ // 2-LUT mapping is equivalent to network decomposition
+    	cout << "\rOutputing..." << std::flush;
+
 	    // Output blif file
 	    ofstream outblif;
 	    outblif.open(output_file_name);
@@ -576,9 +582,9 @@ int main(int argc, char **argv){
 	    outblif << ".end";
 	    // cout << ".end\n";
 	    outblif.close();
-
-	    return 0;
 	}
+
+	cout << "\rFlowMap......" << std::flush;
 
     // Get the topological order for newly decomposed newwork
     std::stack<std::string> FlowMap_cut_Stack;
@@ -889,6 +895,8 @@ int main(int argc, char **argv){
 		// cout << "-----------------------------------------------\n";
     }
 
+    cout << "\rK-LUT......." << std::flush;
+
     // for(std::map<std::string, std::vector<std::string> >::iterator it = t_KLUT_input_map.begin();
     // 																it != t_KLUT_input_map.end(); ++it){
     // 	cout << "Input signals for " << it->first << ": ";
@@ -967,7 +975,7 @@ int main(int argc, char **argv){
 	// 	cout << "Index: " << it->first << " -> NODE: " << it->second.NODE_name << '\n';
 	// }
 
-    cout << "The circuit level is " << circuit_level << ".\n";
+    cout << "\rThe circuit level is " << circuit_level << ".\n";
     cout << "The number of LUTs is " << LUT_count << ".\n";
 
 	// // BFS Traversal to go through the graph in topological order
