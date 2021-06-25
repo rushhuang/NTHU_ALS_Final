@@ -912,12 +912,16 @@ int main(int argc, char **argv){
 
     // New graph for final K-LUT covered graph
     std::map<std::string, NODE> final_graph_mapping;
+    std::map<std::string, bool> visited_input_nodes_mapping;
 
+    // cout << "LUT output signals: ";
     int LUT_count = 0; // Count LUT number
     while(!mapping_phase_traversal_list.empty()){
     	std::string node_v = mapping_phase_traversal_list.front();
     	mapping_phase_traversal_list.pop();
     	LUT_count++;
+    	visited_input_nodes_mapping[node_v] = true;
+    	// cout << node_v << ' ';
 
     	// New NODE
     	NODE NODE_v;
@@ -928,8 +932,10 @@ int main(int argc, char **argv){
     		// If the cut contain only one node, add that node's input NODEs into the list
     		for(int i = 0; i < NODES_map[node_v].InNODEs.size(); ++i){
     			if(PIs_mapping.count(NODES_map[node_v].InNODEs[i]) == 0){ // Input NODE is not in PIs
-    				mapping_phase_traversal_list.push(NODES_map[node_v].InNODEs[i]);
-    				NODE_v.InNODEs.push_back(NODES_map[node_v].InNODEs[i]);
+    				if(visited_input_nodes_mapping.count(NODES_map[node_v].InNODEs[i]) == 0){ // Input NODE is not visited
+    					mapping_phase_traversal_list.push(NODES_map[node_v].InNODEs[i]);
+    					NODE_v.InNODEs.push_back(NODES_map[node_v].InNODEs[i]);
+    				}
     			}
     		}
     	}
@@ -937,14 +943,17 @@ int main(int argc, char **argv){
     		// t_KLUT_input_map[node_v] has the input nodes for the cut
     		for(int i = 0; i < t_KLUT_input_map[node_v].size(); ++i){
     			if(PIs_mapping.count(t_KLUT_input_map[node_v][i]) == 0){ // Input NODE is not in PIs
-    				mapping_phase_traversal_list.push(t_KLUT_input_map[node_v][i]);
-    				NODE_v.InNODEs.push_back(t_KLUT_input_map[node_v][i]);
+    				if(visited_input_nodes_mapping.count(t_KLUT_input_map[node_v][i]) == 0){ // Input NODE is not visited
+    					mapping_phase_traversal_list.push(t_KLUT_input_map[node_v][i]);
+    					NODE_v.InNODEs.push_back(t_KLUT_input_map[node_v][i]);
+    				}
     			}
     		}
     	}
 
     	final_graph_mapping[node_v] = NODE_v;
     }
+    // cout << '\n';
 
     // DFS from PO to get the level of final graph
     std::map<std::string, bool> visited;
