@@ -128,18 +128,27 @@ int k2dfs(std::string node, std::map<std::string, bool>& visited, std::map<std::
     return max_level;
 }
 
-int klutdfs(std::string node, std::map<std::string, bool>& visited, std::string test_pattern,
-			std::vector<std::string>& input_signals, std::map<std::string, NODE>& mapping){
+int klutdfs(std::string node, std::map<std::string, bool>& visited, std::map<std::string, int>& node_output_every_round,
+			std::string test_pattern, std::vector<std::string>& input_signals, std::map<std::string, NODE>& mapping){
     // mark every node as visited
     visited[node] = true;
-  	int signal;
+  	int signal = (mapping[node].NODE_type == "1")?1:0; // Set initial value to the non-controlling value of the gate
 
   	// Check if this node is input signal
   	for(int i = 0; i < input_signals.size(); ++i){
   		if(input_signals[i] == node){
-			istringstream iss( std::string(1,test_pattern[i]) ); // Convert char to string first
-			iss >> signal;
-  			return signal; // Set this input as its test_pattern signal
+  			if(mapping[node].NODE_type == "4"){ // CONSTANT 0
+  				signal = 0;
+  			}
+  			else if(mapping[node].NODE_type == "5"){ // CONSTANT 1
+  				signal = 1;
+  			}
+  			else{
+				istringstream iss( std::string(1,test_pattern[i]) ); // Convert char to string first then to int
+				iss >> signal;
+				node_output_every_round[node] = signal;
+	  			return signal; // Set this input as its test_pattern signal
+  			}
   		}
   	}
 
@@ -147,13 +156,21 @@ int klutdfs(std::string node, std::map<std::string, bool>& visited, std::string 
         // if the node is not visited
         if (visited.count(*it) == 0) {
         	if(mapping[node].NODE_type == "1"){ // If this node is AND
-        		signal = 1; // Set initial value to non-controlling value of AND
-        		signal = signal & klutdfs(*it, visited, test_pattern, input_signals, mapping);
+        		signal = signal & klutdfs(*it, visited, node_output_every_round, test_pattern, input_signals, mapping);
         	}
         	else if(mapping[node].NODE_type == "2"){ // If this node is OR
-        		signal = 0; // Set initial value to non-controlling value of OR
-        		signal = signal | klutdfs(*it, visited, test_pattern, input_signals, mapping);
+        		signal = signal | klutdfs(*it, visited, node_output_every_round, test_pattern, input_signals, mapping);
         	}
+        	else if(mapping[node].NODE_type == "3"){ // If this node is INVERTER
+        		signal = 1 ^ klutdfs(*it, visited, node_output_every_round, test_pattern, input_signals, mapping);
+        	}
+        	else if(mapping[node].NODE_type == "6"){ // If this node is BUFFER
+        		signal = klutdfs(*it, visited, node_output_every_round, test_pattern, input_signals, mapping);
+			}
+        	node_output_every_round[node] = signal; // If the node is not visited, add the output value to it
+        }
+        else{ // Read from previosly computed output
+        	signal = node_output_every_round[node];
         }
     }
     return signal;
@@ -1033,7 +1050,7 @@ int main(int argc, char **argv){
     			outblif << NODES_map[node_v].InNODEs[i] << ' ';
     			cout << NODES_map[node_v].InNODEs[i] << ' ';
     		}
-    		outblif << node_v << ' ';
+    		outblif << node_v << '\n';
     		cout << node_v << '\n';
     		if(NODES_map[node_v].NODE_type == "1"){
 				// cout << "AND";
@@ -1088,19 +1105,23 @@ int main(int argc, char **argv){
     		cout << node_v << '\n';
 
     		std::map<std::string, bool> klut_visited;
+    		std::map<std::string, int> node_output_every_round;
     		std::bitset<6> test_pattern_bit;
     		std::string test_pattern;
     		int output_signal;
     		std::vector<std::string> test_pattern_to_1;
     		for(int i = 0; i < std::pow(2,t_KLUT_input_map[node_v].size()); ++i){
     			klut_visited.clear(); // Clear the visited map every round
+    			node_output_every_round.clear(); // Clear the node output map every round
+
     			// test_pattern generation
     			test_pattern_bit = i;
     			test_pattern = test_pattern_bit.to_string();
     			test_pattern = test_pattern.substr(test_pattern.size() - t_KLUT_input_map[node_v].size());
-    			// cout << test_pattern << ' ';
+    			// cout << "Testing: " << test_pattern << '\n';
 
-    			output_signal = klutdfs(node_v, klut_visited, test_pattern, t_KLUT_input_map[node_v], NODES_map);
+    			output_signal = klutdfs(node_v, klut_visited, node_output_every_round,
+    									test_pattern, t_KLUT_input_map[node_v], NODES_map);
     			// cout << output_signal << '\n';
     			if(output_signal == 1) test_pattern_to_1.push_back(test_pattern);
     		}
