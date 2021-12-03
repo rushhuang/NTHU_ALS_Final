@@ -1029,6 +1029,7 @@ int main(int argc, char **argv){
     	mapping_phase_traversal_list.pop();
 
     	if(PIs_mapping.count(node_v) == 1) continue; // If this node is PI then skip
+    	if(visited_input_nodes_mapping.count(node_v) == 1 && visited_input_nodes_mapping[node_v] == true) continue; // If this node is visited
 
     	LUT_count++;
     	visited_input_nodes_mapping[node_v] = true;
