@@ -3,15 +3,15 @@
 for f in `find ../blif/*.blif`
 do 
 	echo $f
-	# ./map -k 4 $f output.blif
-	# ~/abc/abc -c "cec $f output.blif" # Equivalence check
-	# echo -n '#Level: '
-	# ~/abc/abc -c "read_blif output.blif;print_stats;" | grep 'lev =' | awk '{print $21}' # Level
-	# echo -n '#LUT: '
-	# grep .name output.blif | wc -l # LUT
-	echo -n '#Level: '
+	./map -k 4 $f output.blif
+	~/abc/abc -c "cec $f output.blif" # Equivalence check
+	echo -n '#Level of output.blif: '
+	~/abc/abc -c "read_blif output.blif;print_stats;" | grep 'lev =' | awk '{print $21}' # Level
+	echo -n '#LUT of output.blif: '
+	grep .name output.blif | wc -l # LUT
+	echo -n "#Level of ${f}: "
 	~/abc/abc -c "read_blif $f;print_stats;" | grep 'lev =' | awk '{print $21}'
-	echo -n '#LUT: '
+	echo -n "#LUT of ${f}: "
 	grep .name $f | wc -l 
 done
 

@@ -96,7 +96,7 @@ int dfs(std::string node, std::map<std::string, bool>& visited, std::map<std::st
     // mark every node as visited
     visited[node] = true;
   	
-  	if(mapping[node].InNODEs.size() == 0) return 1; // The bottom level set to 1
+  	if(mapping[node].InNODEs.size() == 0) return 0; // The bottom level set to 0 since it would be increment as soon as it return.
 
   	int max_level = 0;
     for(std::vector<std::string>::iterator it = mapping[node].InNODEs.begin(); it != mapping[node].InNODEs.end(); ++it){
@@ -1018,15 +1018,18 @@ int main(int argc, char **argv){
 	outblif << primary_input_raw << '\n';
 	outblif << primary_output_raw << '\n';
 
-    cout << model_name_raw << '\n';
-	cout << primary_input_raw << '\n';
-	cout << primary_output_raw << '\n';
+ //    cout << model_name_raw << '\n';
+	// cout << primary_input_raw << '\n';
+	// cout << primary_output_raw << '\n';
 
     // cout << "LUT output signals: ";
     LUT_count = 0; // Count LUT number
     while(!mapping_phase_traversal_list.empty()){
     	std::string node_v = mapping_phase_traversal_list.top();
     	mapping_phase_traversal_list.pop();
+
+    	if(PIs_mapping.count(node_v) == 1) continue; // If this node is PI then skip
+
     	LUT_count++;
     	visited_input_nodes_mapping[node_v] = true;
     	// cout << node_v << ' ';
@@ -1037,39 +1040,39 @@ int main(int argc, char **argv){
     	NODE_v.NODE_level = 0;
 
     	outblif << ".names ";
-    	cout << ".names ";
+    	// cout << ".names ";
     	if(t_KLUT_input_map[node_v].size() == 1 && t_KLUT_input_map[node_v][0] == node_v){
     		// If the cut contain only one node, add that node's input NODEs into the list
     		for(int i = 0; i < NODES_map[node_v].InNODEs.size(); ++i){
-    			if(PIs_mapping.count(NODES_map[node_v].InNODEs[i]) == 0){ // Input NODE is not in PIs
+    			// if(PIs_mapping.count(NODES_map[node_v].InNODEs[i]) == 0){ // Input NODE is not in PIs
     				if(visited_input_nodes_mapping.count(NODES_map[node_v].InNODEs[i]) == 0){ // Input NODE is not visited
     					mapping_phase_traversal_list.push(NODES_map[node_v].InNODEs[i]);
     					NODE_v.InNODEs.push_back(NODES_map[node_v].InNODEs[i]);
     				}
-    			}
+    			// }
     			outblif << NODES_map[node_v].InNODEs[i] << ' ';
-    			cout << NODES_map[node_v].InNODEs[i] << ' ';
+    			// cout << NODES_map[node_v].InNODEs[i] << ' ';
     		}
     		outblif << node_v << '\n';
-    		cout << node_v << '\n';
+    		// cout << node_v << '\n';
     		if(NODES_map[node_v].NODE_type == "1"){
 				// cout << "AND";
 			
 				outblif << "11 1\n";
-				cout << "11 1\n";
+				// cout << "11 1\n";
 	    	}
 			else if(NODES_map[node_v].NODE_type == "2"){
 				// cout << "OR";
 				
 				outblif << "1- 1\n";
 				outblif << "-1 1\n";
-				cout << "1- 1\n";
-				cout << "-1 1\n";
+				// cout << "1- 1\n";
+				// cout << "-1 1\n";
 			}
 			else if(NODES_map[node_v].NODE_type == "3"){
 				// cout << "INVERTER";
 				outblif << "0 1\n";
-				cout << "0 1\n";
+				// cout << "0 1\n";
 			}
 			else if(NODES_map[node_v].NODE_type == "4"){
 				// cout << "CONSTANT_0";
@@ -1078,12 +1081,12 @@ int main(int argc, char **argv){
 			else if(NODES_map[node_v].NODE_type == "5"){
 				// cout << "CONSTANT_1";
 				outblif << "1\n";
-				cout << "1\n";
+				// cout << "1\n";
 			}
 			else if(NODES_map[node_v].NODE_type == "6"){
 				// cout << "BUFFER";
 				outblif << "1 1\n";
-				cout << "1 1\n";
+				// cout << "1 1\n";
 			}
 			else if(NODES_map[node_v].NODE_type == "7"){
 				// cout << "UNKNOWN\n";
@@ -1092,17 +1095,17 @@ int main(int argc, char **argv){
     	else{
     		// t_KLUT_input_map[node_v] has the input nodes for the cut
     		for(int i = 0; i < t_KLUT_input_map[node_v].size(); ++i){
-    			if(PIs_mapping.count(t_KLUT_input_map[node_v][i]) == 0){ // Input NODE is not in PIs
+    			// if(PIs_mapping.count(t_KLUT_input_map[node_v][i]) == 0){ // Input NODE is not in PIs
     				if(visited_input_nodes_mapping.count(t_KLUT_input_map[node_v][i]) == 0){ // Input NODE is not visited
     					mapping_phase_traversal_list.push(t_KLUT_input_map[node_v][i]);
     					NODE_v.InNODEs.push_back(t_KLUT_input_map[node_v][i]);
     				}
-    			}
+    			// }
     			outblif << t_KLUT_input_map[node_v][i] << ' ';
-    			cout << t_KLUT_input_map[node_v][i] << ' ';
+    			// cout << t_KLUT_input_map[node_v][i] << ' ';
     		}
     		outblif << node_v << '\n';
-    		cout << node_v << '\n';
+    		// cout << node_v << '\n';
 
     		std::map<std::string, bool> klut_visited;
     		std::map<std::string, int> node_output_every_round;
@@ -1127,14 +1130,14 @@ int main(int argc, char **argv){
     		}
     		for(int i = 0; i < test_pattern_to_1.size(); ++i){
     			outblif << test_pattern_to_1[i] << " 1\n";
-    			cout << test_pattern_to_1[i] << " 1\n";
+    			// cout << test_pattern_to_1[i] << " 1\n";
     		}
     	}
 
     	final_graph_mapping[node_v] = NODE_v;
     }
     outblif << ".end";
-	cout << ".end\n";
+	// cout << ".end\n";
 	outblif.close();
 
     // DFS from PO to get the level of final graph
