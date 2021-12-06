@@ -92,46 +92,55 @@ void topologicalSort(std::stack<std::string>& Stack, std::map<std::string, NODE>
     // cout << '\n';
 }
 
-int dfs(std::string node, std::map<std::string, bool>& visited, std::map<std::string, NODE>& mapping){
-    // mark every node as visited
-    visited[node] = true;
-  	
-  	if(mapping[node].InNODEs.size() == 0) return 0; // The bottom level set to 0 since it would be increment as soon as it return.
+int dfs(std::string node, std::map<std::string, bool>& visited, std::map<std::string, int> level_map, std::map<std::string, NODE>& mapping){
+  	if(mapping[node].InNODEs.size() == 0){
+    	visited[node] = true; // mark this unvisited node as visited
+
+  		level_map[node] = 0;
+  		return 0; // The bottom level is set to 0
+  	}
 
   	int max_level = 0;
     for(std::vector<std::string>::iterator it = mapping[node].InNODEs.begin(); it != mapping[node].InNODEs.end(); ++it){
+    	int this_level = 0;
         // if the node is not visited
         if (visited.count(*it) == 0) {
             // call the dfs function
-            int this_level = dfs(*it, visited, mapping)+1;
-            if(this_level > max_level) max_level = this_level;
+            this_level = dfs(*it, visited, level_map, mapping)+1;
         }
+        else{
+        	this_level = level_map[*it]+1;
+        }
+        if(this_level > max_level) max_level = this_level;
     }
+
+    visited[node] = true; // mark this unvisited node as visited
+    
+    level_map[node] = max_level;
     return max_level;
 }
 
-int k2dfs(std::string node, std::map<std::string, bool>& visited, std::map<std::string, NODE>& mapping){
-    // mark every node as visited
-    visited[node] = true;
+// int k2dfs(std::string node, std::map<std::string, bool>& visited, std::map<std::string, NODE>& mapping){
+//     // mark every node as visited
+//     visited[node] = true;
   	
-  	if(mapping[node].InNODEs.size() == 0) return 0; // The bottom level set to 0
+//   	if(mapping[node].InNODEs.size() == 0) return 0; // The bottom level set to 0
 
-  	int max_level = 0;
-    for(std::vector<std::string>::iterator it = mapping[node].InNODEs.begin(); it != mapping[node].InNODEs.end(); ++it){
-        // if the node is not visited
-        if (visited.count(*it) == 0) {
-            // call the dfs function
-            int this_level = k2dfs(*it, visited, mapping)+1;
-            if(this_level > max_level) max_level = this_level;
-        }
-    }
-    return max_level;
-}
+//   	int max_level = 0;
+//     for(std::vector<std::string>::iterator it = mapping[node].InNODEs.begin(); it != mapping[node].InNODEs.end(); ++it){
+//         // if the node is not visited
+//         if (visited.count(*it) == 0) {
+//             // call the dfs function
+//             int this_level = k2dfs(*it, visited, mapping)+1;
+//             if(this_level > max_level) max_level = this_level;
+//         }
+//     }
+//     return max_level;
+// }
 
 int klutdfs(std::string node, std::map<std::string, bool>& visited, std::map<std::string, int>& node_output_every_round,
 			std::string test_pattern, std::vector<std::string>& input_signals, std::map<std::string, NODE>& mapping){
-    // mark every node as visited
-    visited[node] = true;
+    
   	int signal = (mapping[node].NODE_type == "1")?1:0; // Set initial value to the non-controlling value of the gate
 
   	// Check if this node is input signal
@@ -146,6 +155,8 @@ int klutdfs(std::string node, std::map<std::string, bool>& visited, std::map<std
   			else{
 				istringstream iss( std::string(1,test_pattern[i]) ); // Convert char to string first then to int
 				iss >> signal;
+
+				visited[node] = true; //  mark this unvisited node as visited
 				node_output_every_round[node] = signal;
 	  			return signal; // Set this input as its test_pattern signal
   			}
@@ -173,6 +184,7 @@ int klutdfs(std::string node, std::map<std::string, bool>& visited, std::map<std
         	signal = node_output_every_round[node];
         }
     }
+    visited[node] = true; //  mark this unvisited node as visited
     return signal;
 }
 
@@ -656,9 +668,10 @@ int main(int argc, char **argv){
 	if(k == 2){
 	    // DFS from PO to get the level of final graph
     	std::map<std::string, bool> visited;
+    	std::map<std::string, int> level_map;
     	int circuit_level = 0;
     	for(int i = 0; i < POs.size(); ++i){
-    		int level = k2dfs(POs[i], visited, NODES_map);
+    		int level = dfs(POs[i], visited, level_map, NODES_map);
     		if(level > circuit_level) circuit_level = level;
     	}
 
@@ -1046,10 +1059,10 @@ int main(int argc, char **argv){
     		// If the cut contain only one node, add that node's input NODEs into the list
     		for(int i = 0; i < NODES_map[node_v].InNODEs.size(); ++i){
     			// if(PIs_mapping.count(NODES_map[node_v].InNODEs[i]) == 0){ // Input NODE is not in PIs
-    				if(visited_input_nodes_mapping.count(NODES_map[node_v].InNODEs[i]) == 0){ // Input NODE is not visited
+    				// if(visited_input_nodes_mapping.count(NODES_map[node_v].InNODEs[i]) == 0){ // Input NODE is not visited
     					mapping_phase_traversal_list.push(NODES_map[node_v].InNODEs[i]);
     					NODE_v.InNODEs.push_back(NODES_map[node_v].InNODEs[i]);
-    				}
+    				// }
     			// }
     			outblif << NODES_map[node_v].InNODEs[i] << ' ';
     			// cout << NODES_map[node_v].InNODEs[i] << ' ';
@@ -1097,10 +1110,10 @@ int main(int argc, char **argv){
     		// t_KLUT_input_map[node_v] has the input nodes for the cut
     		for(int i = 0; i < t_KLUT_input_map[node_v].size(); ++i){
     			// if(PIs_mapping.count(t_KLUT_input_map[node_v][i]) == 0){ // Input NODE is not in PIs
-    				if(visited_input_nodes_mapping.count(t_KLUT_input_map[node_v][i]) == 0){ // Input NODE is not visited
+    				// if(visited_input_nodes_mapping.count(t_KLUT_input_map[node_v][i]) == 0){ // Input NODE is not visited
     					mapping_phase_traversal_list.push(t_KLUT_input_map[node_v][i]);
     					NODE_v.InNODEs.push_back(t_KLUT_input_map[node_v][i]);
-    				}
+    				// }
     			// }
     			outblif << t_KLUT_input_map[node_v][i] << ' ';
     			// cout << t_KLUT_input_map[node_v][i] << ' ';
@@ -1143,9 +1156,10 @@ int main(int argc, char **argv){
 
     // DFS from PO to get the level of final graph
     std::map<std::string, bool> visited;
+    std::map<std::string, int> level_map;
     int circuit_level = 0;
     for(int i = 0; i < POs.size(); ++i){
-    	int level = dfs(POs[i], visited, final_graph_mapping);
+    	int level = dfs(POs[i], visited, level_map, final_graph_mapping);
     	if(level > circuit_level) circuit_level = level;
     }
     
