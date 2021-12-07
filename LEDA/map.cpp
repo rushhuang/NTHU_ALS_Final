@@ -57,21 +57,21 @@ struct NODE{
 // https://www.geeksforgeeks.org/cpp-program-for-topological-sorting/
 // A recursive function used by topologicalSort
 void topologicalSortUtil(std::map<std::string, NODE>& NODES_map, std::vector<NODE>& Total_NODES,
-						 std::string v, std::map<std::string, bool>& visited, std::stack<std::string>& Stack){
+						 std::string v, std::map<std::string, bool>& visited, std::queue<std::string>& Queue){
     // Mark the current node as visited.
     visited[v] = true;
   
     // Recur for all the vertices adjacent to this vertex
     for (std::vector<std::string>::iterator i = NODES_map[v].OutNODEs.begin(); i != NODES_map[v].OutNODEs.end(); ++i)
         if (!visited[*i])
-            topologicalSortUtil(NODES_map, Total_NODES, *i, visited, Stack);
+            topologicalSortUtil(NODES_map, Total_NODES, *i, visited, Queue);
   
     // Push current vertex to stack which stores result
-    Stack.push(v);
+    Queue.push(v);
 }
 
 // The function to do Topological Sort. It uses recursive topologicalSortUtil()
-void topologicalSort(std::stack<std::string>& Stack, std::map<std::string, NODE>& NODES_map, std::vector<NODE>& Total_NODES){  
+void topologicalSort(std::queue<std::string>& Queue, std::map<std::string, NODE>& NODES_map, std::vector<NODE>& Total_NODES){  
     // Mark all the vertices as not visited
     // std::map<std::string, bool>* visited = new std::map<std::string, bool>;
     std::map<std::string, bool> visited;
@@ -82,12 +82,12 @@ void topologicalSort(std::stack<std::string>& Stack, std::map<std::string, NODE>
     // Sort starting from all vertices one by one
     for (int i = 0; i < Total_NODES.size(); i++)
         if (visited[Total_NODES[i].NODE_name] == false)
-            topologicalSortUtil(NODES_map, Total_NODES, Total_NODES[i].NODE_name, visited, Stack);
+            topologicalSortUtil(NODES_map, Total_NODES, Total_NODES[i].NODE_name, visited, Queue);
   	
-    // Print contents of stack
-    // while (Stack.empty() == false) {
-    //     cout << Stack.top() << " ";
-    //     Stack.pop();
+    // Print contents of queue
+    // while (Queue.empty() == false) {
+    //     cout << Queue.front() << " ";
+    //     Queue.pop();
     // }
     // cout << '\n';
 }
@@ -438,14 +438,14 @@ int main(int argc, char **argv){
 
 	cout << "\rDecomposing..." << std::flush;
 
-	// DFS stack for topological order
-	std::stack<std::string> Labeling_Stack;
-	topologicalSort(Labeling_Stack, NODES_map, Total_NODES);
+	// DFS queue for topological order
+	std::queue<std::string> Labeling_Queue;
+	topologicalSort(Labeling_Queue, NODES_map, Total_NODES);
 
 	// Traverse the graph in topological order and assign FlowMap label (level) to each NODE.
-	while (!Labeling_Stack.empty()){
-		std::string NODE_front = Labeling_Stack.top();
-        Labeling_Stack.pop();
+	while (!Labeling_Queue.empty()){
+		std::string NODE_front = Labeling_Queue.front();
+        Labeling_Queue.pop();
 
         // Update NODE level for level undecided NODE
 		if(NODES_map[NODE_front].NODE_level == -1){
@@ -665,27 +665,27 @@ int main(int argc, char **argv){
 	// cout << ".end\n";
 	outblif.close();
 
-	if(k == 2){
-	    // DFS from PO to get the level of final graph
-    	std::map<std::string, bool> visited;
-    	std::map<std::string, int> level_map;
-    	int circuit_level = 0;
-    	for(int i = 0; i < POs.size(); ++i){
-    		int level = dfs(POs[i], visited, level_map, NODES_map);
-    		if(level > circuit_level) circuit_level = level;
-    	}
+	// if(k == 2){
+	//     // DFS from PO to get the level of final graph
+ //    	std::map<std::string, bool> visited;
+ //    	std::map<std::string, int> level_map;
+ //    	int circuit_level = 0;
+ //    	for(int i = 0; i < POs.size(); ++i){
+ //    		int level = dfs(POs[i], visited, level_map, NODES_map);
+ //    		if(level > circuit_level) circuit_level = level;
+ //    	}
 
-	    cout << "\rThe circuit level is " << circuit_level << ".\n";
-    	cout << "The number of LUTs is " << LUT_count << ".\n";
+	//     cout << "\rThe circuit level is " << circuit_level << ".\n";
+ //    	cout << "The number of LUTs is " << LUT_count << ".\n";
 
-    	return 0;
-	}
+ //    	return 0;
+	// }
 
 	cout << "\rFlowMap......" << std::flush;
 
     // Get the topological order for newly decomposed newwork
-    std::stack<std::string> FlowMap_cut_Stack;
-	topologicalSort(FlowMap_cut_Stack, NODES_map, Total_NODES);
+    std::queue<std::string> FlowMap_cut_Queue;
+	topologicalSort(FlowMap_cut_Queue, NODES_map, Total_NODES);
 
 	// Create a map to record l(v) for a given node name
 	std::map<std::string, int> FlowMap_NODE_label;
@@ -699,12 +699,13 @@ int main(int argc, char **argv){
 
     // FlowMap cut
     // cout << "FlowMap cut sequence:\n";
-    while (!FlowMap_cut_Stack.empty()){
-		std::string NODE_front = FlowMap_cut_Stack.top();
-        FlowMap_cut_Stack.pop();
+    while (!FlowMap_cut_Queue.empty()){
+		std::string NODE_front = FlowMap_cut_Queue.front();
+        FlowMap_cut_Queue.pop();
 
         // Skip the PI nodes, CONSTANT as well
-        if(NODES_map[NODE_front].InNODEs.size()==0) continue;
+        // if(NODES_map[NODE_front].InNODEs.size()==0) continue;
+        if(std::find(PIs.begin(), PIs.end(), NODE_front) != PIs.end()) continue;
 
         // cout << "Subgraph ending at " << NODE_front << ": \n";
 
@@ -728,7 +729,6 @@ int main(int argc, char **argv){
 		while(!N_t_traversal.empty()){
 			std::string predecessor = N_t_traversal.top();
 			N_t_traversal.pop();
-			visited_N_t_traversal[predecessor] = true;
 
 			// Build edges to connect this node with all its descendant
 			for(int i = 0; i < NODES_map[predecessor].InNODEs.size(); ++i){
@@ -748,6 +748,7 @@ int main(int argc, char **argv){
 					// cout << NODES_map[predecessor].InNODEs[i] << " -> " << predecessor << '\n';
 				}
 			}
+			visited_N_t_traversal[predecessor] = true;
 		}
 
 		// Let p = max{l(u): u in input(t)}
@@ -813,15 +814,15 @@ int main(int argc, char **argv){
 		node print_node;
 		edge print_edge;
 
-		// Add sink node
-		// cout << "\nLinking sink with PI...\n";
-		node sink_node = N_t.new_node();
-		N_t_node_mapping["sink"] = sink_node;
-		FlowMap_NODE_label["sink"] = 0;
+		// Add source node
+		// cout << "\nLinking source with PI...\n";
+		node source_node = N_t.new_node();
+		N_t_node_mapping["source"] = source_node;
+		FlowMap_NODE_label["source"] = 0;
 		forall_nodes(print_node, N_t){
-			if(N_t.indeg(print_node) == 0 && print_node != sink_node){ // Link sink node to every PI of N_t
-				N_t.new_edge(sink_node, print_node);
-				// N_t.print_node(sink_node);
+			if(N_t.indeg(print_node) == 0 && print_node != source_node){ // Link source node to every PI of N_t
+				N_t.new_edge(source_node, print_node);
+				// N_t.print_node(source_node);
 				// cout << " -> ";
 				// N_t.print_node(print_node);
 				// cout << '\n';
@@ -866,8 +867,8 @@ int main(int argc, char **argv){
 			current_total_node_list.push_back(print_node);
 		}
 		for(int i = 0; i < current_total_node_list.size(); ++i){
-			// Duplicate each node except for t_prime and sink
-			if(current_total_node_list[i] == t_prime || current_total_node_list[i] == sink_node) continue;
+			// Duplicate each node except for t_prime and source
+			if(current_total_node_list[i] == t_prime || current_total_node_list[i] == source_node) continue;
 
 			// cout << "Splitting node ";
 			// N_t.print_node(current_total_node_list[i]);
@@ -925,7 +926,7 @@ int main(int argc, char **argv){
 		// Since MIN_CUT in LEDA is just a cut with minimum weights and it does not guarantee the cut separates s from t
 		edge_array<int> flow(N_t);
 		list<node> cut;
-		int cut_value = MAX_FLOW(N_t, sink_node, t_prime, weight, flow, cut);
+		int cut_value = MAX_FLOW(N_t, source_node, t_prime, weight, flow, cut);
 
 		// cout << "****************************************\n";
 		// cout << "*  Nodes to Name Mapping Table\n";
@@ -1031,7 +1032,7 @@ int main(int argc, char **argv){
 	outblif << primary_input_raw << '\n';
 	outblif << primary_output_raw << '\n';
 
- //    cout << model_name_raw << '\n';
+    // cout << model_name_raw << '\n';
 	// cout << primary_input_raw << '\n';
 	// cout << primary_output_raw << '\n';
 
