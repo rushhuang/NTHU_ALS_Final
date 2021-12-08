@@ -1,6 +1,6 @@
 .model map01
 .inputs a b c d e
-.outputs h j
+.outputs h j o
 .names a b c d f
 1--- 1
 -1-- 1
@@ -16,9 +16,13 @@
 1111 1
 .names i j
 0 1
-.names i
-.names f
+.names k
+.names l
 1
-.names k f
+.names l m
 1 1
+.names k n
+0 1
+.names l n o
+11 1
 .end

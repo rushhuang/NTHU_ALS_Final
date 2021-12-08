@@ -2,6 +2,7 @@
 
 for f in `find ../blif/*.blif`
 do 
+	echo "----------------------------------------------------------------------------------------"
 	echo $f
 	./map -k 4 $f output.blif
 	~/abc/abc -c "cec $f output.blif" # Equivalence check

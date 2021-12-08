@@ -57,21 +57,21 @@ struct NODE{
 // https://www.geeksforgeeks.org/cpp-program-for-topological-sorting/
 // A recursive function used by topologicalSort
 void topologicalSortUtil(std::map<std::string, NODE>& NODES_map, std::vector<NODE>& Total_NODES,
-						 std::string v, std::map<std::string, bool>& visited, std::queue<std::string>& Queue){
+						 std::string v, std::map<std::string, bool>& visited, std::stack<std::string>& Stack){
     // Mark the current node as visited.
     visited[v] = true;
   
     // Recur for all the vertices adjacent to this vertex
     for (std::vector<std::string>::iterator i = NODES_map[v].OutNODEs.begin(); i != NODES_map[v].OutNODEs.end(); ++i)
         if (!visited[*i])
-            topologicalSortUtil(NODES_map, Total_NODES, *i, visited, Queue);
+            topologicalSortUtil(NODES_map, Total_NODES, *i, visited, Stack);
   
     // Push current vertex to stack which stores result
-    Queue.push(v);
+    Stack.push(v);
 }
 
 // The function to do Topological Sort. It uses recursive topologicalSortUtil()
-void topologicalSort(std::queue<std::string>& Queue, std::map<std::string, NODE>& NODES_map, std::vector<NODE>& Total_NODES){  
+void topologicalSort(std::stack<std::string>& Stack, std::map<std::string, NODE>& NODES_map, std::vector<NODE>& Total_NODES){  
     // Mark all the vertices as not visited
     // std::map<std::string, bool>* visited = new std::map<std::string, bool>;
     std::map<std::string, bool> visited;
@@ -82,12 +82,12 @@ void topologicalSort(std::queue<std::string>& Queue, std::map<std::string, NODE>
     // Sort starting from all vertices one by one
     for (int i = 0; i < Total_NODES.size(); i++)
         if (visited[Total_NODES[i].NODE_name] == false)
-            topologicalSortUtil(NODES_map, Total_NODES, Total_NODES[i].NODE_name, visited, Queue);
+            topologicalSortUtil(NODES_map, Total_NODES, Total_NODES[i].NODE_name, visited, Stack);
   	
-    // Print contents of queue
-    // while (Queue.empty() == false) {
-    //     cout << Queue.front() << " ";
-    //     Queue.pop();
+    // Print contents of stack
+    // while (Stack.empty() == false) {
+    //     cout << Stack.top() << " ";
+    //     Stack.pop();
     // }
     // cout << '\n';
 }
@@ -100,7 +100,7 @@ int dfs(std::string node, std::map<std::string, bool>& visited, std::map<std::st
   		return 0; // The bottom level is set to 0
   	}
 
-  	int max_level = 0;
+  	int max_level = -1;
     for(std::vector<std::string>::iterator it = mapping[node].InNODEs.begin(); it != mapping[node].InNODEs.end(); ++it){
     	int this_level = 0;
         // if the node is not visited
@@ -438,14 +438,14 @@ int main(int argc, char **argv){
 
 	cout << "\rDecomposing..." << std::flush;
 
-	// DFS queue for topological order
-	std::queue<std::string> Labeling_Queue;
-	topologicalSort(Labeling_Queue, NODES_map, Total_NODES);
+	// DFS stack for topological order
+	std::stack<std::string> Labeling_Stack;
+	topologicalSort(Labeling_Stack, NODES_map, Total_NODES);
 
 	// Traverse the graph in topological order and assign FlowMap label (level) to each NODE.
-	while (!Labeling_Queue.empty()){
-		std::string NODE_front = Labeling_Queue.front();
-        Labeling_Queue.pop();
+	while (!Labeling_Stack.empty()){
+		std::string NODE_front = Labeling_Stack.top();
+        Labeling_Stack.pop();
 
         // Update NODE level for level undecided NODE
 		if(NODES_map[NODE_front].NODE_level == -1){
@@ -665,27 +665,27 @@ int main(int argc, char **argv){
 	// cout << ".end\n";
 	outblif.close();
 
-	// if(k == 2){
-	//     // DFS from PO to get the level of final graph
- //    	std::map<std::string, bool> visited;
- //    	std::map<std::string, int> level_map;
- //    	int circuit_level = 0;
- //    	for(int i = 0; i < POs.size(); ++i){
- //    		int level = dfs(POs[i], visited, level_map, NODES_map);
- //    		if(level > circuit_level) circuit_level = level;
- //    	}
+	if(k == 2){
+	    // DFS from PO to get the level of final graph
+    	std::map<std::string, bool> visited;
+    	std::map<std::string, int> level_map;
+    	int circuit_level = 0;
+    	for(int i = 0; i < POs.size(); ++i){
+    		int level = dfs(POs[i], visited, level_map, NODES_map);
+    		if(level > circuit_level) circuit_level = level;
+    	}
 
-	//     cout << "\rThe circuit level is " << circuit_level << ".\n";
- //    	cout << "The number of LUTs is " << LUT_count << ".\n";
+	    cout << "\rThe circuit level is " << circuit_level << ".\n";
+    	cout << "The number of LUTs is " << LUT_count << ".\n";
 
- //    	return 0;
-	// }
+    	return 0;
+	}
 
 	cout << "\rFlowMap......" << std::flush;
 
     // Get the topological order for newly decomposed newwork
-    std::queue<std::string> FlowMap_cut_Queue;
-	topologicalSort(FlowMap_cut_Queue, NODES_map, Total_NODES);
+    std::stack<std::string> FlowMap_cut_Stack;
+	topologicalSort(FlowMap_cut_Stack, NODES_map, Total_NODES);
 
 	// Create a map to record l(v) for a given node name
 	std::map<std::string, int> FlowMap_NODE_label;
@@ -699,9 +699,9 @@ int main(int argc, char **argv){
 
     // FlowMap cut
     // cout << "FlowMap cut sequence:\n";
-    while (!FlowMap_cut_Queue.empty()){
-		std::string NODE_front = FlowMap_cut_Queue.front();
-        FlowMap_cut_Queue.pop();
+    while (!FlowMap_cut_Stack.empty()){
+		std::string NODE_front = FlowMap_cut_Stack.top();
+        FlowMap_cut_Stack.pop();
 
         // Skip the PI nodes, CONSTANT as well
         // if(NODES_map[NODE_front].InNODEs.size()==0) continue;
@@ -760,6 +760,25 @@ int main(int argc, char **argv){
 		}
 		FlowMap_NODE_label[NODE_front] = p; // Temporarily assign p as the front NODE's label value
 
+		// Add source node
+		// cout << "\nLinking source with PI...\n";
+		node print_node;
+		edge print_edge;
+		node source_node = N_t.new_node();
+		N_t_node_mapping["source"] = source_node;
+		FlowMap_NODE_label["source"] = 0;
+		forall_nodes(print_node, N_t){			
+			for(std::vector<std::string>::const_iterator it = PIs.begin(); it != PIs.end(); ++it){
+				if(N_t_node_mapping.count(*it) != 0 && print_node == N_t_node_mapping[*it]){ // Use short-circuit evaluation to avoid building null mapping for every PI
+					N_t.new_edge(source_node, print_node);
+					// N_t.print_node(source_node);
+					// cout << " -> ";
+					// N_t.print_node(print_node);
+					// cout << '\n';
+				}
+			}
+		}
+
 		// cout << "\np(" << NODE_front << "): " << p << '\n';
 
 		// Create a new graph N_t_copied
@@ -774,7 +793,7 @@ int main(int argc, char **argv){
 		std::string t_prime_name = NODE_front+"_prime";
 		node t_prime = N_t.new_node();
 		for(std::map<std::string, node>::iterator it = N_t_node_mapping.begin(); it != N_t_node_mapping.end(); ++it){
-			if(FlowMap_NODE_label[it->first] == p){
+			if(FlowMap_NODE_label[it->first] == p && it->first != "source"){ // Collapse nodes with label p except for source node
 				Collapsed_nodes.push_back(it->first);
 			}
 		}
@@ -803,6 +822,9 @@ int main(int argc, char **argv){
 						Input_node_list_of_t_prime.push_back(NODES_map[*it].InNODEs[i]);
 					}
 				}
+				if(N_t.indeg(N_t_node_mapping[*it]) == 1 && NODES_map[*it].InNODEs.size() == 0){ // Collapsed node is PIs
+					N_t.new_edge(source_node, t_prime);
+				}
 
 				// Delete the collapsed node
 				N_t.del_node(N_t_node_mapping[*it]);
@@ -811,23 +833,23 @@ int main(int argc, char **argv){
 		}
 		N_t_node_mapping[t_prime_name] = t_prime;
 
-		node print_node;
-		edge print_edge;
+		// node print_node;
+		// edge print_edge;
 
 		// Add source node
 		// cout << "\nLinking source with PI...\n";
-		node source_node = N_t.new_node();
-		N_t_node_mapping["source"] = source_node;
-		FlowMap_NODE_label["source"] = 0;
-		forall_nodes(print_node, N_t){
-			if(N_t.indeg(print_node) == 0 && print_node != source_node){ // Link source node to every PI of N_t
-				N_t.new_edge(source_node, print_node);
-				// N_t.print_node(source_node);
-				// cout << " -> ";
-				// N_t.print_node(print_node);
-				// cout << '\n';
-			}
-		}
+		// node source_node = N_t.new_node();
+		// N_t_node_mapping["source"] = source_node;
+		// FlowMap_NODE_label["source"] = 0;
+		// forall_nodes(print_node, N_t){
+		// 	if(N_t.indeg(print_node) == 0 && print_node != source_node){ // Link source node to every PI of N_t
+		// 		N_t.new_edge(source_node, print_node);
+		// 		// N_t.print_node(source_node);
+		// 		// cout << " -> ";
+		// 		// N_t.print_node(print_node);
+		// 		// cout << '\n';
+		// 	}
+		// }
 
 		// Build reverse N_t node mapping using current nodes
 		for(std::map<std::string, node>::iterator iter = N_t_node_mapping.begin(); iter != N_t_node_mapping.end(); ++iter){
@@ -954,6 +976,7 @@ int main(int argc, char **argv){
 		// Cut nodes are the input signal of KLUT
 		std::queue<node> KLUT_input_extract_queue;
 		std::vector<std::string> KLUT_inputs;
+		std::map<std::string, bool> KLUT_inputs_visited;
 
 		KLUT_input_extract_queue.push(t_prime);
 		while(!KLUT_input_extract_queue.empty()){
@@ -965,7 +988,10 @@ int main(int argc, char **argv){
 			edge in_edge;
 			forall(in_edge, input_edges){
 				if(cut_node_mapping.count(N_t.source(in_edge)) > 0){ // Input node is in cut set
-					KLUT_inputs.push_back(Rev_N_t_node_mapping[input_check_node]);
+					if(KLUT_inputs_visited.count(Rev_N_t_node_mapping[input_check_node]) == 0){
+						KLUT_inputs.push_back(Rev_N_t_node_mapping[input_check_node]);
+						KLUT_inputs_visited[Rev_N_t_node_mapping[input_check_node]] = true;
+					}
 				}
 				else{ // Input node is NOT in cut set
 					// Put the input node into the KLUT_input_extract_queue for further search
@@ -977,11 +1003,11 @@ int main(int argc, char **argv){
 		if(cut_value <= k){ // node t can be packed with the nodes in X_t_bar
 			FlowMap_NODE_label[NODE_front] = p;
 
-			// cout << "Input signals for " << Rev_N_t_node_mapping[t_prime] << ": ";
-			// for(int i = 0; i < KLUT_inputs.size(); ++i){
-			// 	cout << KLUT_inputs[i] << ' ';
-			// }
-			// cout << '\n';
+			cout << "Input signals for " << Rev_N_t_node_mapping[t_prime] << ": ";
+			for(int i = 0; i < KLUT_inputs.size(); ++i){
+				cout << KLUT_inputs[i] << ' ';
+			}
+			cout << '\n';
 		}
 		else{ // node t is self cut out
 			FlowMap_NODE_label[NODE_front] = p+1;
@@ -998,8 +1024,8 @@ int main(int argc, char **argv){
 		// cout << "-----------------------------------------------\n";
     }
 
-    // cout << "\rK-LUT......." << std::flush;
-    cout << "\rK-LUT.......\n";
+    cout << "\rK-LUT......." << std::flush;
+    // cout << "\rK-LUT.......\n";
 
     // for(std::map<std::string, std::vector<std::string> >::iterator it = t_KLUT_input_map.begin();
     // 																it != t_KLUT_input_map.end(); ++it){
@@ -1054,9 +1080,12 @@ int main(int argc, char **argv){
     	NODE_v.NODE_name = node_v;
     	NODE_v.NODE_level = 0;
 
-    	outblif << ".names ";
-    	// cout << ".names ";
+    	// outblif << ".names ";
+    	// // cout << ".names ";
     	if(t_KLUT_input_map[node_v].size() == 1 && t_KLUT_input_map[node_v][0] == node_v){
+    		outblif << ".names ";
+    		// cout << ".names ";
+
     		// If the cut contain only one node, add that node's input NODEs into the list
     		for(int i = 0; i < NODES_map[node_v].InNODEs.size(); ++i){
     			// if(PIs_mapping.count(NODES_map[node_v].InNODEs[i]) == 0){ // Input NODE is not in PIs
@@ -1108,19 +1137,19 @@ int main(int argc, char **argv){
 			}
     	}
     	else{
-    		// t_KLUT_input_map[node_v] has the input nodes for the cut
-    		for(int i = 0; i < t_KLUT_input_map[node_v].size(); ++i){
-    			// if(PIs_mapping.count(t_KLUT_input_map[node_v][i]) == 0){ // Input NODE is not in PIs
-    				// if(visited_input_nodes_mapping.count(t_KLUT_input_map[node_v][i]) == 0){ // Input NODE is not visited
-    					mapping_phase_traversal_list.push(t_KLUT_input_map[node_v][i]);
-    					NODE_v.InNODEs.push_back(t_KLUT_input_map[node_v][i]);
-    				// }
-    			// }
-    			outblif << t_KLUT_input_map[node_v][i] << ' ';
-    			// cout << t_KLUT_input_map[node_v][i] << ' ';
-    		}
-    		outblif << node_v << '\n';
-    		// cout << node_v << '\n';
+    		// // t_KLUT_input_map[node_v] has the input nodes for the cut
+    		// for(int i = 0; i < t_KLUT_input_map[node_v].size(); ++i){
+    		// 	// if(PIs_mapping.count(t_KLUT_input_map[node_v][i]) == 0){ // Input NODE is not in PIs
+    		// 		// if(visited_input_nodes_mapping.count(t_KLUT_input_map[node_v][i]) == 0){ // Input NODE is not visited
+    		// 			mapping_phase_traversal_list.push(t_KLUT_input_map[node_v][i]);
+    		// 			NODE_v.InNODEs.push_back(t_KLUT_input_map[node_v][i]);
+    		// 		// }
+    		// 	// }
+    		// 	outblif << t_KLUT_input_map[node_v][i] << ' ';
+    		// 	// cout << t_KLUT_input_map[node_v][i] << ' ';
+    		// }
+    		// outblif << node_v << '\n';
+    		// // cout << node_v << '\n';
 
     		std::map<std::string, bool> klut_visited;
     		std::map<std::string, int> node_output_every_round;
@@ -1143,10 +1172,34 @@ int main(int argc, char **argv){
     			// cout << output_signal << '\n';
     			if(output_signal == 1) test_pattern_to_1.push_back(test_pattern);
     		}
-    		for(int i = 0; i < test_pattern_to_1.size(); ++i){
-    			outblif << test_pattern_to_1[i] << " 1\n";
-    			// cout << test_pattern_to_1[i] << " 1\n";
+    		// for(int i = 0; i < test_pattern_to_1.size(); ++i){
+    		// 	outblif << test_pattern_to_1[i] << " 1\n";
+    		// 	// cout << test_pattern_to_1[i] << " 1\n";
+    		// }
+    		if(test_pattern_to_1.size() > 0){
+    			outblif << ".names ";
+    			// cout << ".names ";
+
+    			// t_KLUT_input_map[node_v] has the input nodes for the cut
+    			for(int i = 0; i < t_KLUT_input_map[node_v].size(); ++i){
+    				// if(PIs_mapping.count(t_KLUT_input_map[node_v][i]) == 0){ // Input NODE is not in PIs
+    					// if(visited_input_nodes_mapping.count(t_KLUT_input_map[node_v][i]) == 0){ // Input NODE is not visited
+    						mapping_phase_traversal_list.push(t_KLUT_input_map[node_v][i]);
+    						NODE_v.InNODEs.push_back(t_KLUT_input_map[node_v][i]);
+    					// }
+    				// }
+    				outblif << t_KLUT_input_map[node_v][i] << ' ';
+    				// cout << t_KLUT_input_map[node_v][i] << ' ';
+    			}
+    			outblif << node_v << '\n';
+    			// cout << node_v << '\n';
+    			for(int i = 0; i < test_pattern_to_1.size(); ++i){
+    				outblif << test_pattern_to_1[i] << " 1\n";
+    				// cout << test_pattern_to_1[i] << " 1\n";
+    			}
     		}
+    		else continue;
+    		ASSERT(test_pattern_to_1.size() > 0, "Truth table not found!");
     	}
 
     	final_graph_mapping[node_v] = NODE_v;
@@ -1168,7 +1221,7 @@ int main(int argc, char **argv){
 	// 	cout << "Index: " << it->first << " -> NODE: " << it->second.NODE_name << '\n';
 	// }
 
-    cout << "The circuit level is " << circuit_level << ".\n";
+    cout << "\rThe circuit level is " << circuit_level << ".\n";
     cout << "The number of LUTs is " << LUT_count << ".\n";
 
 	return 0;
