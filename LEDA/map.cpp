@@ -142,19 +142,29 @@ int klutdfs(std::string node, std::map<std::string, bool>& visited, std::map<std
 			std::string test_pattern, std::vector<std::string>& input_signals, std::map<std::string, NODE>& mapping){
     
   	int signal = (mapping[node].NODE_type == "1")?1:0; // Set initial value to the non-controlling value of the gate
+  	int input_signal_error = 0; // if input signal is conflict with CONSTANT
+  	int out_signal;
 
   	// Check if this node is input signal
   	for(int i = 0; i < input_signals.size(); ++i){
   		if(input_signals[i] == node){
+  			istringstream iss( std::string(1,test_pattern[i]) ); // Convert char to string first then to int
+			iss >> signal;
+
+			// cout << "Testing input node (" << node << ") with signal: " << signal << '\n';
   			if(mapping[node].NODE_type == "4"){ // CONSTANT 0
-  				signal = 0;
+  				// signal = 0;
+  				if(!signal) return signal;
+  				else input_signal_error = 1;
   			}
   			else if(mapping[node].NODE_type == "5"){ // CONSTANT 1
-  				signal = 1;
+  				// signal = 1;
+  				if(signal) return signal;
+  				else input_signal_error = 1;
   			}
   			else{
-				istringstream iss( std::string(1,test_pattern[i]) ); // Convert char to string first then to int
-				iss >> signal;
+				// istringstream iss( std::string(1,test_pattern[i]) ); // Convert char to string first then to int
+				// iss >> signal;
 
 				visited[node] = true; //  mark this unvisited node as visited
 				node_output_every_round[node] = signal;
@@ -162,28 +172,37 @@ int klutdfs(std::string node, std::map<std::string, bool>& visited, std::map<std
   			}
   		}
   	}
+  	if(input_signal_error) return -1;
 
+  	// cout << "Input nodes for node " << node << ": ";
     for(std::vector<std::string>::iterator it = mapping[node].InNODEs.begin(); it != mapping[node].InNODEs.end(); ++it){
-        // if the node is not visited
+    	// cout << *it << ' ';
+        // if the predecessor is not visited
         if (visited.count(*it) == 0) {
-        	if(mapping[node].NODE_type == "1"){ // If this node is AND
-        		signal = signal & klutdfs(*it, visited, node_output_every_round, test_pattern, input_signals, mapping);
-        	}
-        	else if(mapping[node].NODE_type == "2"){ // If this node is OR
-        		signal = signal | klutdfs(*it, visited, node_output_every_round, test_pattern, input_signals, mapping);
-        	}
-        	else if(mapping[node].NODE_type == "3"){ // If this node is INVERTER
-        		signal = 1 ^ klutdfs(*it, visited, node_output_every_round, test_pattern, input_signals, mapping);
-        	}
-        	else if(mapping[node].NODE_type == "6"){ // If this node is BUFFER
-        		signal = klutdfs(*it, visited, node_output_every_round, test_pattern, input_signals, mapping);
-			}
-        	node_output_every_round[node] = signal; // If the node is not visited, add the output value to it
+        	out_signal = klutdfs(*it, visited, node_output_every_round, test_pattern, input_signals, mapping);
         }
-        else{ // Read from previosly computed output
-        	signal = node_output_every_round[node];
+        else{ // Read from previosly computed output of the predecessor
+        	out_signal = node_output_every_round[*it];
         }
+        if(out_signal == -1) return -1; // Propagate the input signal error
+        if(mapping[node].NODE_type == "1"){ // If this node is AND
+        	signal = signal & out_signal;
+        }
+        else if(mapping[node].NODE_type == "2"){ // If this node is OR
+        	signal = signal | out_signal;
+        }
+        else if(mapping[node].NODE_type == "3"){ // If this node is INVERTER
+        	signal = 1 ^ out_signal;
+        }
+        else if(mapping[node].NODE_type == "6"){ // If this node is BUFFER
+        	signal = out_signal;
+		}
+		else ASSERT(true, "UNKNOWN gate type!");
+        // node_output_every_round[*it] = signal; // If the predecessor is not visited, add the output value to it
     }
+    // cout << '\n';
+    // cout << "Output signal for node (" << node << ") is " << signal << '\n';
+    node_output_every_round[node] = signal;
     visited[node] = true; //  mark this unvisited node as visited
     return signal;
 }
@@ -988,7 +1007,7 @@ int main(int argc, char **argv){
 			edge in_edge;
 			forall(in_edge, input_edges){
 				if(cut_node_mapping.count(N_t.source(in_edge)) > 0){ // Input node is in cut set
-					if(KLUT_inputs_visited.count(Rev_N_t_node_mapping[input_check_node]) == 0){
+					if(KLUT_inputs_visited.count(Rev_N_t_node_mapping[input_check_node]) == 0){ // If the node is already in the list then skip
 						KLUT_inputs.push_back(Rev_N_t_node_mapping[input_check_node]);
 						KLUT_inputs_visited[Rev_N_t_node_mapping[input_check_node]] = true;
 					}
@@ -1003,11 +1022,11 @@ int main(int argc, char **argv){
 		if(cut_value <= k){ // node t can be packed with the nodes in X_t_bar
 			FlowMap_NODE_label[NODE_front] = p;
 
-			cout << "Input signals for " << Rev_N_t_node_mapping[t_prime] << ": ";
-			for(int i = 0; i < KLUT_inputs.size(); ++i){
-				cout << KLUT_inputs[i] << ' ';
-			}
-			cout << '\n';
+			// cout << "Input signals for " << Rev_N_t_node_mapping[t_prime] << ": ";
+			// for(int i = 0; i < KLUT_inputs.size(); ++i){
+			// 	cout << KLUT_inputs[i] << ' ';
+			// }
+			// cout << '\n';
 		}
 		else{ // node t is self cut out
 			FlowMap_NODE_label[NODE_front] = p+1;
@@ -1017,6 +1036,7 @@ int main(int argc, char **argv){
 			KLUT_inputs.push_back(NODE_front);
 		}
 
+		ASSERT(KLUT_inputs.size() <= k, "Input signal number are more than k!");
 		// Map the vector of input signals of KLUT with the output node t
 		t_KLUT_input_map[NODE_front] = KLUT_inputs;
 
@@ -1134,6 +1154,7 @@ int main(int argc, char **argv){
 			}
 			else if(NODES_map[node_v].NODE_type == "7"){
 				// cout << "UNKNOWN\n";
+				ASSERT(true, "UNKNOWN gate type!");
 			}
     	}
     	else{
