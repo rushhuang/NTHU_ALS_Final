@@ -572,7 +572,7 @@ int main(int argc, char **argv){
 			NODES_map[NODE_front].NODE_level = max_level+1;
 		}
     }
-    
+
     ofstream outblif;
     int LUT_count = 0;
     if(k == 2){
@@ -1190,7 +1190,7 @@ int main(int argc, char **argv){
 
     		std::map<std::string, bool> klut_visited;
     		std::map<std::string, int> node_output_every_round;
-    		std::bitset<6> test_pattern_bit;
+    		std::bitset<10> test_pattern_bit;
     		std::string test_pattern;
     		int output_signal;
     		std::vector<std::string> test_pattern_to_1;
