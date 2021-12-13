@@ -1105,7 +1105,7 @@ int main(int argc, char **argv){
     	if(PIs_mapping.count(node_v) == 1) continue; // If this node is PI then skip
     	if(visited_input_nodes_mapping.count(node_v) == 1 && visited_input_nodes_mapping[node_v] == true) continue; // If this node is visited
 
-    	LUT_count++;
+    	// LUT_count++;
     	visited_input_nodes_mapping[node_v] = true;
     	// cout << node_v << ' ';
 
@@ -1117,6 +1117,7 @@ int main(int argc, char **argv){
     	// outblif << ".names ";
     	// // cout << ".names ";
     	if(t_KLUT_input_map[node_v].size() == 1 && t_KLUT_input_map[node_v][0] == node_v){
+    		LUT_count++;
     		outblif << ".names ";
     		// cout << ".names ";
 
@@ -1212,6 +1213,7 @@ int main(int argc, char **argv){
     		// 	// cout << test_pattern_to_1[i] << " 1\n";
     		// }
     		if(test_pattern_to_1.size() > 0){
+    			LUT_count++;
     			outblif << ".names ";
     			// cout << ".names ";
 
