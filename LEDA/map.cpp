@@ -92,7 +92,7 @@ void topologicalSort(std::stack<std::string>& Stack, std::map<std::string, NODE>
     // cout << '\n';
 }
 
-int dfs(std::string node, std::map<std::string, bool>& visited, std::map<std::string, int> level_map, std::map<std::string, NODE>& mapping){
+int dfs(std::string node, std::map<std::string, bool>& visited, std::map<std::string, int>& level_map, std::map<std::string, NODE>& mapping){
   	if(mapping[node].InNODEs.size() == 0){
     	visited[node] = true; // mark this unvisited node as visited
 

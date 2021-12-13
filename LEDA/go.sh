@@ -5,7 +5,7 @@ do
 	echo "----------------------------------------------------------------------------------------"
 	echo $f
 	./map -k 4 $f output.blif
-	~/abc/abc -c "cec $f output.blif" # Equivalence check
+	~/abc/abc -c "cec $f output.blif" | grep "Networks" # Equivalence check
 	echo -n '#Level of output.blif: '
 	~/abc/abc -c "read_blif output.blif;print_stats;" | grep 'lev =' | awk '{print $21}' # Level
 	echo -n '#LUT of output.blif: '
