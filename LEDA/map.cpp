@@ -572,119 +572,120 @@ int main(int argc, char **argv){
 			NODES_map[NODE_front].NODE_level = max_level+1;
 		}
     }
-
-     // 2-LUT mapping is equivalent to network decomposition
-    cout << "\rOutputing..." << std::flush;
+    
+    ofstream outblif;
     int LUT_count = 0;
+    if(k == 2){
+    	// 2-LUT mapping is equivalent to network decomposition
+    	cout << "\rOutputing..." << std::flush;
+    	
 
-	// Output blif file
-	ofstream outblif;
-	outblif.open(output_file_name);
+		// Output blif file
+		outblif.open(output_file_name);
 
-	outblif << model_name_raw << '\n';
-	outblif << primary_input_raw << '\n';
-	outblif << primary_output_raw << '\n';
+		outblif << model_name_raw << '\n';
+		outblif << primary_input_raw << '\n';
+		outblif << primary_output_raw << '\n';
 
-	// cout << model_name_raw << '\n';
-	// cout << primary_input_raw << '\n';
-	// cout << primary_output_raw << '\n';
+		// cout << model_name_raw << '\n';
+		// cout << primary_input_raw << '\n';
+		// cout << primary_output_raw << '\n';
 
-	std::queue<std::string> Output_traversal;
-	std::map<std::string, bool> Output_visited_NODEs;
-	// cout << "PO: ";
-	for(int i = 0; i < POs.size(); ++i){
-		Output_traversal.push(POs[i]);
-		// cout << POs[i] << ' ';
-	}
-	// cout << '\n';
-
-	while(!Output_traversal.empty()){
-		std::string this_node = Output_traversal.front();
-		Output_traversal.pop();
-
-		// Skip NODEs that have been added multiple times before it is really traversed
-		if(Output_visited_NODEs.count(this_node) != 0) continue;
-
-		Output_visited_NODEs[this_node] = true;
-
-		if(NODES_map[this_node].NODE_type == "0") continue; // PI does not need to be printed as .names
-
-		outblif << ".names ";
-		LUT_count++;
-		// cout << ".names ";
-		for(int i = 0; i < NODES_map[this_node].InNODEs.size(); ++i){
-			// Only the unvisited NODEs need to be put in the queue
-			if(Output_visited_NODEs.count(NODES_map[this_node].InNODEs[i]) == 0)
-				Output_traversal.push(NODES_map[this_node].InNODEs[i]);
-
-			outblif << NODES_map[this_node].InNODEs[i] << ' ';
-			// cout << NODES_map[this_node].InNODEs[i] << ' ';
+		std::queue<std::string> Output_traversal;
+		std::map<std::string, bool> Output_visited_NODEs;
+		// cout << "PO: ";
+		for(int i = 0; i < POs.size(); ++i){
+			Output_traversal.push(POs[i]);
+			// cout << POs[i] << ' ';
 		}
-		outblif << this_node << '\n';
-		// cout << this_node << '\n';
+		// cout << '\n';
 
-		if(NODES_map[this_node].NODE_type == "1"){
-			// cout << "AND";
-			// For input NODEs
+		while(!Output_traversal.empty()){
+			std::string this_node = Output_traversal.front();
+			Output_traversal.pop();
+
+			// Skip NODEs that have been added multiple times before it is really traversed
+			if(Output_visited_NODEs.count(this_node) != 0) continue;
+
+			Output_visited_NODEs[this_node] = true;
+
+			if(NODES_map[this_node].NODE_type == "0") continue; // PI does not need to be printed as .names
+
+			outblif << ".names ";
+			LUT_count++;
+			// cout << ".names ";
 			for(int i = 0; i < NODES_map[this_node].InNODEs.size(); ++i){
-				outblif << "1";
-				// cout << "1";
+				// Only the unvisited NODEs need to be put in the queue
+				if(Output_visited_NODEs.count(NODES_map[this_node].InNODEs[i]) == 0)
+					Output_traversal.push(NODES_map[this_node].InNODEs[i]);
+
+				outblif << NODES_map[this_node].InNODEs[i] << ' ';
+				// cout << NODES_map[this_node].InNODEs[i] << ' ';
 			}
-			outblif << ' ';
-			// cout << ' ';
+			outblif << this_node << '\n';
+			// cout << this_node << '\n';
 
-			// For gate NODE
-			outblif << "1\n";
-			// cout << "1\n";
-	    }
-		else if(NODES_map[this_node].NODE_type == "2"){
-			// cout << "OR";
-			for(int i = 0; i < NODES_map[this_node].InNODEs.size(); ++i){
+			if(NODES_map[this_node].NODE_type == "1"){
+				// cout << "AND";
 				// For input NODEs
-				for(int j = 0; j < NODES_map[this_node].InNODEs.size(); ++j){
-					if(i == j){
-						outblif << "1";
-						// cout << "1";
-					}
-					else{
-						outblif << "-";
-						// cout << "-";
-					}
+				for(int i = 0; i < NODES_map[this_node].InNODEs.size(); ++i){
+					outblif << "1";
+					// cout << "1";
 				}
-				// For output NODEs
-				outblif << " 1\n";
-				// cout << " 1\n";
+				outblif << ' ';
+				// cout << ' ';
+
+				// For gate NODE
+				outblif << "1\n";
+				// cout << "1\n";
+	    	}
+			else if(NODES_map[this_node].NODE_type == "2"){
+				// cout << "OR";
+				for(int i = 0; i < NODES_map[this_node].InNODEs.size(); ++i){
+					// For input NODEs
+					for(int j = 0; j < NODES_map[this_node].InNODEs.size(); ++j){
+						if(i == j){
+							outblif << "1";
+							// cout << "1";
+						}
+						else{
+							outblif << "-";
+							// cout << "-";
+						}
+					}
+					// For output NODEs
+					outblif << " 1\n";
+					// cout << " 1\n";
+				}
+			}
+			else if(NODES_map[this_node].NODE_type == "3"){
+				// cout << "INVERTER";
+				outblif << "0 1\n";
+				// cout << "0 1\n";
+			}
+			else if(NODES_map[this_node].NODE_type == "4"){
+				// cout << "CONSTANT_0";
+				continue;
+			}
+			else if(NODES_map[this_node].NODE_type == "5"){
+				// cout << "CONSTANT_1";
+				outblif << "1\n";
+				// cout << "1\n";
+			}
+			else if(NODES_map[this_node].NODE_type == "6"){
+				// cout << "BUFFER";
+				outblif << "1 1\n";
+				// cout << "1 1\n";
+			}
+			else if(NODES_map[this_node].NODE_type == "7"){
+				// cout << "UNKNOWN\n";
 			}
 		}
-		else if(NODES_map[this_node].NODE_type == "3"){
-			// cout << "INVERTER";
-			outblif << "0 1\n";
-			// cout << "0 1\n";
-		}
-		else if(NODES_map[this_node].NODE_type == "4"){
-			// cout << "CONSTANT_0";
-			continue;
-		}
-		else if(NODES_map[this_node].NODE_type == "5"){
-			// cout << "CONSTANT_1";
-			outblif << "1\n";
-			// cout << "1\n";
-		}
-		else if(NODES_map[this_node].NODE_type == "6"){
-			// cout << "BUFFER";
-			outblif << "1 1\n";
-			// cout << "1 1\n";
-		}
-		else if(NODES_map[this_node].NODE_type == "7"){
-			// cout << "UNKNOWN\n";
-		}
-	}
 
-	outblif << ".end";
-	// cout << ".end\n";
-	outblif.close();
+		outblif << ".end";
+		// cout << ".end\n";
+		outblif.close();
 
-	if(k == 2){
 	    // DFS from PO to get the level of final graph
     	std::map<std::string, bool> visited;
     	std::map<std::string, int> level_map;
