@@ -749,6 +749,8 @@ int main(int argc, char **argv){
 			std::string predecessor = N_t_traversal.top();
 			N_t_traversal.pop();
 
+			ASSERT(NODES_map[predecessor].InNODEs.size() <= 2, "Input size more than 2!!!");
+
 			// Build edges to connect this node with all its descendant
 			for(int i = 0; i < NODES_map[predecessor].InNODEs.size(); ++i){
 				if(visited_N_t_traversal.count(NODES_map[predecessor].InNODEs[i]) == 0){
@@ -762,10 +764,13 @@ int main(int argc, char **argv){
 						N_t_node_mapping[NODES_map[predecessor].InNODEs[i]] = tmp_node;
 					}
 
-					// Create a edge to connect the new input node and predecessor node
-					tmp_edge = N_t.new_edge(N_t_node_mapping[NODES_map[predecessor].InNODEs[i]], N_t_node_mapping[predecessor]);
-					// cout << NODES_map[predecessor].InNODEs[i] << " -> " << predecessor << '\n';
+					// // Create a edge to connect the new input node and predecessor node
+					// tmp_edge = N_t.new_edge(N_t_node_mapping[NODES_map[predecessor].InNODEs[i]], N_t_node_mapping[predecessor]);
+					// // cout << NODES_map[predecessor].InNODEs[i] << " -> " << predecessor << '\n';
 				}
+				// Create a edge to connect the new input node and predecessor node
+				tmp_edge = N_t.new_edge(N_t_node_mapping[NODES_map[predecessor].InNODEs[i]], N_t_node_mapping[predecessor]);
+				// cout << NODES_map[predecessor].InNODEs[i] << " -> " << predecessor << '\n';
 			}
 			visited_N_t_traversal[predecessor] = true;
 		}
@@ -842,7 +847,11 @@ int main(int argc, char **argv){
 					}
 				}
 				if(N_t.indeg(N_t_node_mapping[*it]) == 1 && NODES_map[*it].InNODEs.size() == 0){ // Collapsed node is PIs
-					N_t.new_edge(source_node, t_prime);
+					if(std::find(Input_node_list_of_t_prime.begin(),
+								 Input_node_list_of_t_prime.end(), "source") == Input_node_list_of_t_prime.end()){
+						// If source has not been linked to t_prime
+						N_t.new_edge(source_node, t_prime);
+					}
 				}
 
 				// Delete the collapsed node
@@ -997,6 +1006,9 @@ int main(int argc, char **argv){
 		std::vector<std::string> KLUT_inputs;
 		std::map<std::string, bool> KLUT_inputs_visited;
 
+		// int print_out = 0;
+		// if(Rev_N_t_node_mapping[t_prime] == "i_prime") print_out = 1;
+
 		KLUT_input_extract_queue.push(t_prime);
 		while(!KLUT_input_extract_queue.empty()){
 			node input_check_node = KLUT_input_extract_queue.front();
@@ -1006,7 +1018,9 @@ int main(int argc, char **argv){
 			list<edge> input_edges = N_t.in_edges(input_check_node);
 			edge in_edge;
 			forall(in_edge, input_edges){
+				// if(print_out) cout << "Check node " << Rev_N_t_node_mapping[N_t.source(in_edge)] << " as child of " << Rev_N_t_node_mapping[input_check_node] << '\n';
 				if(cut_node_mapping.count(N_t.source(in_edge)) > 0){ // Input node is in cut set
+					// if(print_out) cout << "Find a cut between " << Rev_N_t_node_mapping[N_t.source(in_edge)] << " and " << Rev_N_t_node_mapping[input_check_node] << '\n';
 					if(KLUT_inputs_visited.count(Rev_N_t_node_mapping[input_check_node]) == 0){ // If the node is already in the list then skip
 						KLUT_inputs.push_back(Rev_N_t_node_mapping[input_check_node]);
 						KLUT_inputs_visited[Rev_N_t_node_mapping[input_check_node]] = true;
